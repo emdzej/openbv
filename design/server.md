@@ -96,8 +96,11 @@ and process network input at the same point in the frame.
 15. `game->update(delay)` (`Game.cpp:348`): votes, players (only while `GAME_PLAYING`), photon beam ticks,
     weapon availability, minibots, projectiles (§5).
 16. If `GAME_PLAYING`: coord-frame broadcast, per-player pings and the timer sync (§2.5).
-17. Auto-balance (TDM and CTF, §5.13).
-18. Game-type update: CTF → `updateCTF` (§5.14); "Champion" (type 3) round timer (§5.15).
+17. Still inside that `GAME_PLAYING` block: auto-balance (TDM and CTF, §5.13).
+18. Still inside it: the game-type update: CTF → `updateCTF` (§5.14); "Champion" (type 3) round timer
+    (§5.15). (Steps 17 and 18 sit in the same `if (game->roundState == GAME_PLAYING)` as step 16,
+    `Server.cpp:1228`; the original's indentation makes it easy to miss. So between rounds no flag is taken
+    or captured and the auto-balance timer stands still.)
 19. `updateNet(delay, true)`: a second baboNet update (again one connect/disconnect event).
 20. Map transfers: up to `sv_maxUploadRate*1024/30` bytes of 250-byte chunks per frame (§2.3).
 21. `frameID++`.
@@ -965,6 +968,13 @@ slot order) — skipping one carrying the enemy flag — then the one with the *
 scanning downwards; `teamID = assignPlayerTeam(...)`, broadcast `TEAM_REQUEST {id, newTeam}`. (The flag
 check compares `flagState[1]` for blues and `flagState[0]` for reds, i.e. the flag that team carries.)
 
+Two details of the timer and the loop (kept): the countdown fires on `autoBalanceTimer < 0` after the
+decrement, so a timer that lands exactly on 0 is taken up again by the `== 0` branch the next frame (a
+recount and possibly a new notification, no balance); and the red/blue lists are built once before the
+`while (nbToSwitch > 0)` loop, so with more than one player to move every pass picks the same player from the
+unchanged list: he is moved once (`assignPlayerTeam` to his new team changes nothing) and the
+`TEAM_REQUEST` is sent again. With teams 2 apart (one to move), the usual case, it makes no difference.
+
 ### 5.14 CTF (`Server::updateCTF`, `ServerCTF.cpp:24`)
 
 Flags: 0 = blue (at `flagPodPos[0]`), 1 = red. `flagState`: −2 at its pod, −1 on the ground at `flagPos`,
@@ -1168,6 +1178,7 @@ e.g. at 10 steps, and log stalls).
 14. `switchWeapon` writes the global `gameVar.cl_primaryWeapon`; the next new player's default
     `nextSpawnWeapon` is the last weapon anyone switched to (harmless: spawns always carry the weapon).
 15. Type 3 round reset kills players on clients only.
+19. Auto-balance re-sends the same player's team change when more than one has to move (§5.13).
 16. Projectile deletion takes one extra frame (the projectile is updated twice after being flagged).
 17. `sv_password` sent to clients and the master in clear (**deviate**: don't).
 18. The ping timeout is 300 frames (10 s), not the 3 s in the log text.
@@ -1316,7 +1327,7 @@ through a command channel processed at the start of a frame (like console input)
 
 ### 10.2 Milestones
 
-Status (October 2026): milestones 1 to 3 are done (`server/`); the rest is to do.
+Status (October 2026): milestones 1 to 4 are done (`server/`); the rest is to do.
 
 1. **[done] Wire + handshake + presence.** `proto` with golden tests for every struct; transport; session loop;
    connect/disconnect events; the handshake and state dump (§2.2); ping/pong (§5.11); chat; name/skin;
@@ -1330,7 +1341,15 @@ Status (October 2026): milestones 1 to 3 are done (`server/`); the rest is to do
    `Map::performCollision`/`collisionClip` compiled natively (`server/internal/reftest/cpp`), bit for bit:
    700 projectiles over 40,102 frames (every message, radius hit, state field and rand() state), 400
    minibots, 600 radius hits, 1,500 collisions; and with two openbv clients on a Go session.
-4. **Teams.** TDM, CTF (§5.13–5.14), auto-balance, type 3.
+4. **[done] Teams.** TDM, CTF (§5.13–5.14), auto-balance, type 3 (`server/internal/game/team.go`; team
+   spawns, auto-assign, team scoring and round ends were in place from milestones 1–2). Checked against the
+   original `Server::updateCTF`, `Server::autoBalance` and the auto-balance and type-3 blocks of
+   `Server::update`, `Game::assignPlayerTeam`, `Game::spawnPlayer` and `Player::kill`, compiled natively, bit for
+   bit: 600 CTF cases (scripted paths past the pods and dropped flags, deaths mid-way: 242 takes, 65
+   returns/captures, 124 drops), 500 auto-balance runs of up to 520 frames (227 notifications, 463 team
+   moves), 1,500 team assignments, 2,000 spawn choices over all game types, 200 type-3 round resets; with two
+   openbv clients on a Go CTF session (a capture) and a TDM session (a kill and the team score); and against
+   the C++ listen server for a lone player's capture (the same flag messages, byte for byte).
 5. **Server administration.** Votes (§5.16), console commands (§7), bans, admin login; the HTTP admin UI and
    multi-session management; the master (§9).
 6. **Hardening and deviations** (documented): playerID binding, password not echoed, bounds checks, rate
@@ -1363,7 +1382,7 @@ Three references, from cheapest to most faithful:
    byte for byte (after zeroing padding). This is the strongest check and the one to automate in CI for the
    simulation milestones (2–4).
 
-What exists (milestone 2):
+What exists (milestones 2–4):
 
 - `server/internal/reftest`: level 1. `cpp/build.sh` extracts the original functions verbatim
   (`rotateAboutAxis`, `reflect`, the rand helpers, `segmentToSphere`, `Map::rayTest`/`rayTileTest`, the
@@ -1378,6 +1397,12 @@ What exists (milestone 2):
   (they depend on the server's interpolated position).
 - A two-client fight on a Go session (two `./play --realtime` processes): kills, drops, pickups, respawns
   and the scoreboard on both clients.
+- Milestone 4: `cpp/team_head.cpp` + `team_main.cpp` (built by `build.sh`, `testdata/team.json.gz`) run the
+  original team code (§10.2 item 4) and `game/team_ref_test.go` replays every case through the Go code. End to
+  end, a test corridor map of our own (two pods on one line, the only spawns; not shipped) served by the Go
+  server lets scripted clients capture and fight: two clients on CTF (one capture, both scoreboards agree),
+  two on TDM (a kill counted for the killer's team on both); and the same lone-player CTF script against the
+  C++ listen server (hosted in the client, `set sv_gameType 2` after `host`) gives the same flag messages.
 
 Throughout: the reference hash checks of the openbv client (headless gasm-run) stay unchanged; the Go server
 gets its own deterministic tests (fixed seed, scripted connections, recorded message streams as golden files).

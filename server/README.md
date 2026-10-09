@@ -4,7 +4,7 @@ Babo Violent 2.11 game servers for the openbv client, in Go: one process runs se
 game server of its own, with its port, settings and players), with an admin page. The rules are a port of
 the original's `Server*.cpp` and the parts of the game it runs; `design/server.md` is the specification.
 
-**State:** milestones 1 to 3 of `design/server.md` §10.2. Players connect, get the original's handshake and
+**State:** milestones 1 to 4 of `design/server.md` §10.2. Players connect, get the original's handshake and
 state dump (or download the map), choose teams, spawn, move, see each other and chat; pings, timeouts,
 idling, the join message, round end and map rotation. Deathmatch combat: the hitscan weapons (SMG, shotgun,
 sniper, dual machine gun, chain gun, photon rifle with its lingering beam, flame thrower) with the
@@ -12,8 +12,11 @@ original's spread, fire-rate checks and ray tests; damage with the Pro values, s
 instagib; kills, scores, the drops (life pack, weapon, grenades) and their pickups; the `sv_serverType = 1`
 quirk. Projectiles and secondaries: rockets (remote detonation), grenades, molotovs and their flames
 (sticking to players, burning), radius damage, the knives, the shield, the nuke bot, the minibot turret
-(its aim, shots and wall collisions, its coord frames), `sv_explodingFT`. CTF and the team rules, votes
-and the master server (the in-game Game Browser) come next; their messages are accepted and ignored.
+(its aim, shots and wall collisions, its coord frames), `sv_explodingFT`. The team modes: team deathmatch,
+capture the flag (taking, dropping, returning and capturing flags, with the original's radii), "Champion"
+(type 3, Pro: its spawn slots and round resets), auto-balance, auto-assign, team spawns and scores, and each
+type's round end. Votes, the admin commands and the master server (the in-game Game Browser) come next; their
+messages are accepted and ignored.
 
 ## Run
 
@@ -88,6 +91,11 @@ Against the original (design/server.md §10.3):
   frame by frame (40,102 frames: every message's bytes, every radius hit, the state, the rand() state),
   400 minibots, 600 radius hits, 1,500 collisions — bit for bit. `internal/game/secondary_test.go` checks
   the request paths (remote detonation, knives, the nuke's timer, the minibot, the shield, a molotov).
+- `internal/game/team_ref_test.go`: the original `Server::updateCTF`, `Server::autoBalance` with
+  `Server::update`'s auto-balance and type-3 blocks, `Game::assignPlayerTeam`, `Game::spawnPlayer` and
+  `Player::kill` (`cpp/team_head.cpp`, `cpp/team_main.cpp`): 600 CTF cases over scripted paths (takes,
+  returns, captures, drops), 500 auto-balance runs, 1,500 team assignments, 2,000 spawn choices across the
+  game types, 200 type-3 round resets — bit for bit, rand() state included.
 - `internal/game/listen_test.go`: sniper shots recorded from the C++ listen server (a game hosted in the
   client, `--param netlog=1`), each reply reproduced byte for byte.
 - By hand: the client logs every packet with `--param netlog=1`. Hosting a game in the client (the

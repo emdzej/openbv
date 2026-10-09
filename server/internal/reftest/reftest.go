@@ -290,3 +290,141 @@ func LoadProjectiles() (*Projectiles, error) {
 	}
 	return &g, nil
 }
+
+// TeamPlayer is a player in the team cases (cpp/team_main.cpp), in slot order.
+type TeamPlayer struct {
+	ID     int `json:"id"`
+	Team   int `json:"team"`
+	Status int `json:"status"`
+	Pos    V   `json:"pos"`
+	Played F   `json:"played"`
+	Score  int `json:"score"`
+	FA     int `json:"fa"`
+	Ret    int `json:"ret"`
+	Slot   int `json:"slot"`
+	TTS    F   `json:"tts"`
+}
+
+// TeamState is the game after a step: per player [team, status, score, flagAttempts, returns,
+// spawnSlot, timeToSpawn bits, position], the flags, the scores (blue, red, blueWin, redWin) and the
+// rand() state.
+type TeamState struct {
+	State     [][]any `json:"state"`
+	FlagState [2]int  `json:"flagState"`
+	FlagPos   [2]V    `json:"flagPos"`
+	Scores    [4]int  `json:"scores"`
+	Rand      uint32  `json:"rand"`
+	Ev        []Event `json:"ev"`
+}
+
+// Event is a message sent (type ID, bytes in hex with the padding zeroed).
+type Event struct {
+	Send int    `json:"send"`
+	B    string `json:"b"`
+}
+
+// CTFCase is players walking past the pods and dropped flags, frame by frame (Server::updateCTF).
+type CTFCase struct {
+	Pods      [2]V         `json:"pods"`
+	FlagState [2]int       `json:"flagState"`
+	FlagPos   [2]V         `json:"flagPos"`
+	Wins      [2]int       `json:"wins"`
+	Players   []TeamPlayer `json:"players"`
+	Frames    []struct {
+		Pos  []V       `json:"pos"`  // the players' positions before the update, in slot order
+		Kill []int     `json:"kill"` // slots killed this frame (Player::kill), after their move
+		Full bool      `json:"full"` // the state was recorded
+		Ev   []Event   `json:"ev"`
+		St   TeamState `json:"st"`
+	} `json:"frames"`
+}
+
+// BalanceCase is Server::update's auto-balance block run for NFrames frames; Frames has the ones
+// where something was sent, and the last.
+type BalanceCase struct {
+	GameType    int          `json:"gameType"`
+	AutoBalance bool         `json:"autoBalance"`
+	Time        int          `json:"time"`
+	TTS         F            `json:"tts"`
+	Timer       F            `json:"timer"`
+	FlagState   [2]int       `json:"flagState"`
+	Players     []TeamPlayer `json:"players"`
+	NFrames     int          `json:"nframes"`
+	Frames      []struct {
+		Frame int       `json:"frame"`
+		Timer F         `json:"timer"`
+		Ev    []Event   `json:"ev"`
+		St    TeamState `json:"st"`
+	} `json:"frames"`
+}
+
+// AssignCase is one Game::assignPlayerTeam.
+type AssignCase struct {
+	Seed      uint32       `json:"seed"`
+	Scores    [2]int       `json:"scores"`
+	TTS       F            `json:"tts"`
+	FlagState [2]int       `json:"flagState"`
+	ID        int          `json:"id"`
+	Req       int          `json:"req"`
+	Players   []TeamPlayer `json:"players"`
+	Ret       int          `json:"ret"`
+	Ev        []Event      `json:"ev"`
+	St        TeamState    `json:"st"`
+}
+
+// SpawnCase is one Game::spawnPlayer.
+type SpawnCase struct {
+	Seed      uint32       `json:"seed"`
+	GameType  int          `json:"gameType"`
+	SpawnType int          `json:"spawnType"`
+	Limit     F            `json:"limit"`
+	Left      F            `json:"left"`
+	Pods      [2]V         `json:"pods"`
+	Spawns    []V          `json:"spawns"`
+	ID        int          `json:"id"`
+	Players   []TeamPlayer `json:"players"`
+	OK        bool         `json:"ok"`
+	Spawned   bool         `json:"spawned"`
+	At        V            `json:"at"`
+	Slot      int          `json:"slot"`
+	Past      bool         `json:"past"` // read dm_spawns[size]: undefined in the original
+	Rand      uint32       `json:"rand"`
+}
+
+// ChampionCase is type 3's round reset (Server::update, Pro).
+type ChampionCase struct {
+	Limit   F            `json:"limit"`
+	Left    F            `json:"left"`
+	Players []TeamPlayer `json:"players"`
+	After   F            `json:"after"`
+	Ev      []Event      `json:"ev"`
+	St      TeamState    `json:"st"`
+}
+
+// Team is testdata/team.json.gz (cpp/team_main.cpp).
+type Team struct {
+	CTF      []CTFCase      `json:"ctf"`
+	Balance  []BalanceCase  `json:"balance"`
+	Assign   []AssignCase   `json:"assign"`
+	Spawn    []SpawnCase    `json:"spawn"`
+	Champion []ChampionCase `json:"champion"`
+}
+
+// LoadTeam reads testdata/team.json.gz.
+func LoadTeam() (*Team, error) {
+	_, file, _, _ := runtime.Caller(0)
+	f, err := os.Open(filepath.Join(filepath.Dir(file), "testdata", "team.json.gz"))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	z, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	var g Team
+	if err := json.NewDecoder(z).Decode(&g); err != nil {
+		return nil, err
+	}
+	return &g, nil
+}

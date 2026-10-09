@@ -2,10 +2,10 @@
 // of Game, Player and Map it runs (design/server.md is the specification; every function cites its
 // source). One Server is one session's game; all calls come from the session's goroutine.
 //
-// Milestone 1 (design/server.md §10.2): connections, the handshake and state dump, map downloads,
-// pings, chat, names and skins, teams, spawning (DM spawn choice and the team types' basic one),
-// coord-frame interpolation and broadcast, cvars to clients, round end and map rotation. Shooting,
-// damage, projectiles and the team modes' rules come next; their messages are accepted and ignored.
+// Milestones 1 to 4 (design/server.md §10.2): connections, the handshake and state dump, map
+// downloads, pings, chat, names and skins, teams, spawning, coord frames, cvars to clients, round end
+// and map rotation; DM combat; projectiles and secondaries; the team modes (team.go: auto-balance,
+// CTF, "Champion").
 package game
 
 import (
@@ -89,6 +89,8 @@ type Server struct {
 	banList        []ban
 	infoSendDelay  float32
 	nbPlayers      int
+
+	autoBalanceTimer float32 // Server::autoBalanceTimer (Server.cpp:51): never reset by a map change
 
 	// combat (milestone 2)
 	weapons            [proto.WeaponMinibot + 1]weaponDef // gameVar.weapons: changed at run time
@@ -342,9 +344,11 @@ func (s *Server) Frame() {
 	}
 	// 15.
 	s.gameUpdate()
-	// 16. the coord-frame batches
+	// 16. the coord-frame batches; 17. auto-balance and 18. the game type's update, inside the same
+	// GAME_PLAYING block (Server.cpp:1228: the original's indentation hides it; §1.3)
 	if s.roundState == proto.GamePlaying {
 		s.sendCoordFrames()
+		s.updateTeamModes()
 	}
 	// 19.
 	s.updateNet()

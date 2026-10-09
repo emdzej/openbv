@@ -88,3 +88,48 @@ unifdef -DCONSOLE -D_PRO_ -UWIN32 -U_DX_ "$src/MapRender.cpp" > "$out/MapRender.
 "$out/proj" "$out/projectiles.json"
 gzip -9 -n -c "$out/projectiles.json" > "$here/../testdata/projectiles.json.gz"
 echo "wrote $(cd "$here/../testdata" && pwd)/projectiles.json.gz ($(wc -c < "$here/../testdata/projectiles.json.gz") bytes)"
+
+# --- the team driver: Server::updateCTF (ServerCTF.cpp), Server::autoBalance and two blocks of
+# Server::update (Server.cpp: the auto-balance timer, and type 3's round reset in the Pro build),
+# Game::assignPlayerTeam (Game.cpp), Game::spawnPlayer (GameSpawn.cpp) and Player::kill (Player.cpp),
+# the dedicated Pro build, in team_head.cpp's stand-ins.
+unifdef -DCONSOLE -D_PRO_ -UWIN32 -U_DX_ "$src/Server.cpp" > "$out/Server.cpp" || true
+unifdef -DCONSOLE -D_PRO_ -UWIN32 -U_DX_ "$src/Game.cpp" > "$out/Game.cpp" || true
+unifdef -DCONSOLE -D_PRO_ -UWIN32 -U_DX_ "$src/GameSpawn.cpp" > "$out/GameSpawn.cpp" || true
+{
+	cat "$here/team_head.cpp"
+	python3 -I "$here/extract.py" "$src/ServerCTF.cpp" "void Server::updateCTF("
+	python3 -I "$here/extract.py" "$out/Server.cpp" "void Server::autoBalance("
+	python3 -I - "$out/Server.cpp" <<'PY'
+import sys
+s = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+def between(a, b):
+    i = s.index(a)
+    return s[i:s.index(b, i)]
+print("// --- from game/Server.cpp: Server::update, the auto-balance block")
+print("void Server::balanceStep(float delay)\n{")
+print(between("//--- Run the auto balance au 2mins", "//--- Run game type specific update"))
+print("}")
+print("// --- from game/Server.cpp: Server::update, type 3's block (Pro)")
+print("void Server::championStep(float delay)\n{")
+i = s.index("if (game->roundTimeLeft == 0)", s.index("// Every minute, new spawn-slots and respawn everyone"))
+j = s.index("{", i)
+depth, k = 0, j
+while True:
+    depth += {"{": 1, "}": -1}.get(s[k], 0)
+    if depth == 0:
+        break
+    k += 1
+print(s[i:k + 1])
+print("}")
+PY
+	python3 -I "$here/extract.py" "$out/Game.cpp" "int Game::assignPlayerTeam("
+	python3 -I "$here/extract.py" "$out/GameSpawn.cpp" "bool Game::spawnPlayer("
+	python3 -I "$here/extract.py" "$out/Player.cpp" "void Player::kill("
+	cat "$here/team_main.cpp"
+} > "$out/team.cpp"
+"$CXX" -std=c++11 -O0 -ffp-contract=off -w -I"$src" -I"$root/src/inc" -include "$here/musl/libm.h" "$out/team.cpp" "$src/CVector.cpp" \
+	"$out"/cosf.o "$out"/sinf.o "$out"/__cosdf.o "$out"/__sindf.o "$out"/__rem_pio2f.o -o "$out/team"
+"$out/team" "$out/team.json"
+gzip -9 -n -c "$out/team.json" > "$here/../testdata/team.json.gz"
+echo "wrote $(cd "$here/../testdata" && pwd)/team.json.gz ($(wc -c < "$here/../testdata/team.json.gz") bytes)"
