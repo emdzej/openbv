@@ -17,6 +17,7 @@
 */
 
 #include "Scene.h"
+#include "ui.h"
 #include "Console.h"
 #include "GameVar.h"
 #include "Helper.h"
@@ -62,7 +63,7 @@ Scene::Scene()
 			glViewport((GLint)((res[0] - res[1]*1.333f)/2.0f), 0, (GLsizei)(res[1]*1.333f), (GLsizei)res[1]);
 		else
 			glViewport(0, 0, res[0], res[1]);
-		dkglSetProjection(60, 1, 50, (float)res[1]*1.333f, (float)res[1]);
+		dkglSetProjection(60, 1, 50, (float)res[0], (float)res[1]);
 
 		// Truc par default � enabeler
 		glEnable(GL_DEPTH_TEST);
@@ -70,7 +71,7 @@ Scene::Scene()
 		glDisable(GL_TEXTURE_2D);
 		glColor3f(1,1,1);
 
-		dkglPushOrtho(800, 600);
+		dkglPushOrtho(UI_W, UI_H);
 
 		// Print au millieu
 		glColor3f(1,1,1);
@@ -100,7 +101,7 @@ Scene::Scene()
 	//--- Overall control
 	/*menuManager.root = new CControl();
 	menuManager.root->font = font;
-	menuManager.root->size.set(800,600);
+	menuManager.root->size.set(UI_W, UI_H);
 	menuManager.root->backColor.set(.3f,.5f,.8f);
 	menuManager.root->foreColor.set(1,1,1);
 	menuManager.root->textShadow = true;
@@ -342,7 +343,7 @@ void Scene::render()
 		glViewport( (GLint)((res[0] - res[1]*1.333f)/2.0f), 0, (GLsizei)(res[1]*1.333f), (GLsizei)res[1]);
 	else
 		glViewport(0, 0, res[0], res[1]);
-	dkglSetProjection(60, 1, 50, (float)res[1]*1.333f, (float)res[1]);
+	dkglSetProjection(60, 1, 50, (float)res[0], (float)res[1]);
 
 	// Truc par default � enabeler
 	glEnable(GL_DEPTH_TEST);
@@ -367,10 +368,10 @@ void Scene::render()
 
 		// Non, le curseur sur TOUUTEEE
 		CVector2i cursor = dkwGetCursorPos_main();
-		int xM = (int)(((float)cursor[0]/(float)res[0])*800.0f);
-		int yM = (int)(((float)cursor[1]/(float)res[1])*600.0f);
+		int xM = (int)(((float)cursor[0]/(float)res[0])* (float)UI_W);
+		int yM = (int)(((float)cursor[1]/(float)res[1])* (float)UI_H);
 #ifndef _DX_
-		dkglPushOrtho(800,600);
+		dkglPushOrtho(UI_W, UI_H);
 			glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -384,7 +385,8 @@ void Scene::render()
 		// On afficher le fps
 		if(gameVar.r_widescreen > 1) res[0] = static_cast<int>(res[1]*1.333f);
 #ifndef _DX_
-		dkglPushOrtho((float)res[0], (float)res[1]);
+		// openbv: the footer (user, version, FPS) in UI units, muted (it was in screen pixels)
+		dkglPushOrtho(UI_W, UI_H);
 			glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 				glEnable(GL_TEXTURE_2D);
 				glEnable(GL_BLEND);
@@ -397,20 +399,20 @@ void Scene::render()
 				{
 					if (status->get() == CStatus::ONLINE)
 					{
-						glColor3f(0,1,0);
-						printLeftText(10, (float)res[1] - 20, 20, CString("\x2 Current user: ") + gameVar.cl_accountUsername);
+						glColor3f(.55f,.85f,.6f);
+						printLeftText(UI_MARGIN, UI_H - 30, 15, CString("Current user: ") + gameVar.cl_accountUsername);
 					}
 					else if (status->get() == CStatus::OFFLINE)
 					{
-						glColor3f(1,0,0);
-						printLeftText(10, (float)res[1] - 20, 20, " Offline");
+						glColor3f(.9f,.35f,.35f);
+						printLeftText(UI_MARGIN, UI_H - 30, 15, "Offline");
 					}
 				}
 
 				glColor3f(1,1,1);
 				if (gameVar.r_showStats)
 				{
-					printRightText((float)res[0], 0, 20, CString("FPS : %i", (int)dkcGetFPS()));
+					printRightText(UI_W - 6, 4, 12, CString("FPS %i", (int)dkcGetFPS()));
 				//	printRightText((float)res[0], 32, 32, CString("NB PARTICLE : %i", gameVar.ro_nbParticle));
 				//	unsigned long byteSent = (client)?bb_clientGetBytesSent(client->uniqueClientID) + bb_serverGetBytesSent() + bb_peerGetBytesSent():0;
 				//	unsigned long byteRecv = (client)?bb_clientGetBytesReceived(client->uniqueClientID) + bb_serverGetBytesReceived() + bb_peerGetBytesReceived():0;
@@ -423,11 +425,11 @@ void Scene::render()
 				{
 					if (server)
 					{
-						printRightText((float)res[0]-5, (float)res[1]-32-5, 32, CString(gameVar.lang_serverVersion.s, (int)GAME_VERSION_SV/10000, (int)(GAME_VERSION_SV%10000)/100, ((int)GAME_VERSION_SV%100)));
+						printRightText(UI_W - UI_MARGIN, UI_H - 30, 15, CString(gameVar.lang_serverVersion.s, (int)GAME_VERSION_SV/10000, (int)(GAME_VERSION_SV%10000)/100, ((int)GAME_VERSION_SV%100)));
 					}
 					else
 					{
-						printRightText((float)res[0]-5, (float)res[1]-32-5, 32, CString(gameVar.lang_clientVersion.s, (int)GAME_VERSION_CL/10000, (int)(GAME_VERSION_CL%10000)/100, ((int)GAME_VERSION_CL%100)));
+						printRightText(UI_W - UI_MARGIN, UI_H - 30, 15, CString(gameVar.lang_clientVersion.s, (int)GAME_VERSION_CL/10000, (int)(GAME_VERSION_CL%10000)/100, ((int)GAME_VERSION_CL%100)));
 					}
 
 					//--- Copyrights (replaced by head games logo)
@@ -471,7 +473,8 @@ void Scene::render()
 
 		// On afficher le fps
 #ifndef _DX_
-		dkglPushOrtho((float)res[0], (float)res[1]);
+		// openbv: the footer (user, version, FPS) in UI units, muted (it was in screen pixels)
+		dkglPushOrtho(UI_W, UI_H);
 			glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 				glEnable(GL_TEXTURE_2D);
 				glEnable(GL_BLEND);
@@ -484,20 +487,20 @@ void Scene::render()
 				{
 					if (status->get() == CStatus::ONLINE)
 					{
-						glColor3f(0,1,0);
-						printLeftText(10, (float)res[1] - 20, 20, CString("\x2 Current user: ") + gameVar.cl_accountUsername);
+						glColor3f(.55f,.85f,.6f);
+						printLeftText(UI_MARGIN, UI_H - 30, 15, CString("Current user: ") + gameVar.cl_accountUsername);
 					}
 					else if (status->get() == CStatus::OFFLINE)
 					{
-						glColor3f(1,0,0);
-						printLeftText(10, (float)res[1] - 20, 20, " Offline");
+						glColor3f(.9f,.35f,.35f);
+						printLeftText(UI_MARGIN, UI_H - 30, 15, "Offline");
 					}
 				}
 
 				glColor3f(1,1,1);
 				if (gameVar.r_showStats)
 				{
-					printRightText((float)res[0], 0, 20, CString("FPS : %i", (int)dkcGetFPS()));
+					printRightText(UI_W - 6, 4, 12, CString("FPS %i", (int)dkcGetFPS()));
 				//dkfPrint(20,0, 0, 0, CString("FPS : %i", (int)dkcGetFPS()).s);
                //(size,x-width,y,0,text.s);
 					//printRightText((float)res[0], 32, 32, CString("NB PARTICLE : %i", gameVar.ro_nbParticle));
@@ -512,11 +515,11 @@ void Scene::render()
 				{
 					if (server)
 					{
-						printRightText((float)res[0]-5, (float)res[1]-32-5, 32, CString(gameVar.lang_serverVersion.s, (int)GAME_VERSION_SV/10000, (int)(GAME_VERSION_SV%10000)/100, ((int)GAME_VERSION_SV%100)));
+						printRightText(UI_W - UI_MARGIN, UI_H - 30, 15, CString(gameVar.lang_serverVersion.s, (int)GAME_VERSION_SV/10000, (int)(GAME_VERSION_SV%10000)/100, ((int)GAME_VERSION_SV%100)));
 					}
 					else
 					{
-						printRightText((float)res[0]-5, (float)res[1]-32-5, 32, CString(gameVar.lang_clientVersion.s, (int)GAME_VERSION_CL/10000, (int)(GAME_VERSION_CL%10000)/100, ((int)GAME_VERSION_CL%100)));
+						printRightText(UI_W - UI_MARGIN, UI_H - 30, 15, CString(gameVar.lang_clientVersion.s, (int)GAME_VERSION_CL/10000, (int)(GAME_VERSION_CL%10000)/100, ((int)GAME_VERSION_CL%100)));
 					}
 
 					//--- Copyrights (replaced by head games logo)
@@ -535,10 +538,10 @@ void Scene::render()
 
 		// Non, le curseur sur TOUUTEEE
 		CVector2i cursor = dkwGetCursorPos_main();
-		int xM = (int)(((float)cursor[0]/(float)res[0])*800.0f);
-		int yM = (int)(((float)cursor[1]/(float)res[1])*600.0f);
+		int xM = (int)(((float)cursor[0]/(float)res[0])* (float)UI_W);
+		int yM = (int)(((float)cursor[1]/(float)res[1])* (float)UI_H);
 #ifndef _DX_
-		dkglPushOrtho(800,600);
+		dkglPushOrtho(UI_W, UI_H);
 			glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

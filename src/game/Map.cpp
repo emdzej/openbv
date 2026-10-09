@@ -17,6 +17,7 @@
 */
 
 #include "Map.h"
+#include "ui.h"
 #include "Helper.h"
 #include "FileIO.h"
 #include "Console.h"
@@ -60,7 +61,7 @@ Map::Map(CString mapFilename, Game * _game, unsigned int font, bool editor, int 
 			glViewport( (GLint)((res[0] - res[1]*1.333f)/2.0f) , 0, (GLsizei)(res[1]*1.333f), (GLsizei)res[1]);
 		else
 			glViewport(0, 0, res[0], res[1]);
-		dkglSetProjection(60, 1, 50, (float)res[1]*1.333f, (float)res[1]);
+		dkglSetProjection(60, 1, 50, (float)res[0], (float)res[1]);
 
 		// Truc par default à enabeler
 		glEnable(GL_DEPTH_TEST);
@@ -68,7 +69,7 @@ Map::Map(CString mapFilename, Game * _game, unsigned int font, bool editor, int 
 		glDisable(GL_TEXTURE_2D);
 		glColor3f(1,1,1);
 
-		dkglPushOrtho(800, 600);
+		dkglPushOrtho(UI_W, UI_H);
 
 		// Print au millieu
 		glColor3f(1,1,1);

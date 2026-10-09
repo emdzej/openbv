@@ -20,7 +20,9 @@
 
 
 #include "CListener.h"
+#include "ui.h"
 #include "CControl.h"
+#include "UITheme.h"
 #include "Helper.h"
 #include "CMenuManager.h"
 #include "KeyManager.h"
@@ -46,6 +48,9 @@ CControl::CControl()
 	mouseOver = false;
 	isHoverable = false;
 	textShadow = false;
+	primary = false;
+	tab = false;
+	hoverFade = 0;
 	anim = 0;
 	style = "NONE";
 	editable = false;
@@ -111,6 +116,9 @@ CControl::CControl(CControl * in_parent,
 	mouseOver = false;
 	isHoverable = false;
 	textShadow = false;
+	primary = false;
+	tab = false;
+	hoverFade = 0;
 	style = in_style;
 	editable = false;
 	isFocusable = false;
@@ -240,6 +248,7 @@ CControl::CControl(CControl * in_parent,
 	if (in_style == "SLIDER")
 	{
 		slider = true;
+		textAlign = CONTROL_TEXTALIGN_MIDDLERIGHT;   // openbv: the value sits right of the track
 	}
 
 	if (snapTo)
@@ -273,6 +282,9 @@ CControl::CControl(CControl * in_parent,
 			size.set(parent->size[0] - 40, 20);
 			frame3D = false;
 			frame2D = true;
+			// openbv: a small muted section label over a hairline (it was a full-width bar)
+			textSize = 18;
+			textAlign = CONTROL_TEXTALIGN_MIDDLELEFT;
 		}
 	}
 
@@ -415,6 +427,14 @@ void CControl::update(float delay)
 	}
 
 	if (!visible) return;
+
+	// openbv: the hover highlight fades in and out (on the game's fixed tick, so it stays deterministic)
+	{
+		bool hot = isHoverable && enable && (menuManager.hoveringControl == this || (mouseOver && !partOfScroll));
+		hoverFade += (hot ? 1 : -1) * delay * 8;
+		if (hoverFade < 0) hoverFade = 0;
+		if (hoverFade > 1) hoverFade = 1;
+	}
 
 	//--- Childs dabords!
 	for (i=0;i<(int)children.size();++i)
@@ -743,6 +763,9 @@ void CControl::updateScrollRect()
 
 
 extern bool enableShadow;
+
+// openbv: the artwork of the page drawn this frame (see CMenuManager::render)
+unsigned int uiPageArt = 0;
 #include "Console.h"
 //
 //--- Render
@@ -805,86 +828,140 @@ void CControl::render()
 
 #ifndef _DX_
 	glScissor(
-		(GLint)((((float)Rect[0]/800.0f) * (float)res[0]) + offset), 
-		res[1] - (int)(((float)(Rect[1])/600.0f) * (float)res[1]) - (int)(((float)Rect[3]/600.0f) * (float)res[1] + 1),
-		(int)(((float)Rect[2]/800.0f) * (float)res[0]), 
-		(int)(((float)Rect[3]/600.0f) * (float)res[1] + 1));
+		(GLint)((((float)Rect[0]/ (float)UI_W) * (float)res[0]) + offset), 
+		res[1] - (int)(((float)(Rect[1])/ (float)UI_H) * (float)res[1]) - (int)(((float)Rect[3]/ (float)UI_H) * (float)res[1] + 1),
+		(int)(((float)Rect[2]/ (float)UI_W) * (float)res[0]), 
+		(int)(((float)Rect[3]/ (float)UI_H) * (float)res[1] + 1));
 #endif
 
 	CVector2i offsetText;
 
-	CVector3f grayScale = backColor;
-	if (!enable) grayScale.grayScale();
+	// openbv: the redesigned look (UITheme.h) replaces the original's gradient quads. What each control
+	// is (button, field, list, check box, ...) still comes from its style flags.
+	bool hovered = hoverFade > 0;
+	bool pressed = isHoverable && enable && menuManager.activeControl == this && mouseOver;
+	bool scrollPart = partOfScroll;
+	float x = (float)pos[0], y = (float)pos[1], w = (float)size[0], h = (float)size[1];
+	UIColor textColor = ui::text;
+	bool textSet = false;
+
 	if (!noFill)
 	{
-		if (frame3D)
+		if (style == "SEPARATOR")
 		{
-			if (mouseOver && menuManager.activeControl == this && isHoverable && enable || haveFocus())
+			ui::bar(x, y + h - 1, w, 1, ui::panelLine);
+		}
+		else if (style == "SEPARATOR_THIN")
+		{
+			ui::bar(x, y + h / 2, w, 1, ui::panelLine);
+		}
+		else if (tab)
+		{
+			// the open page's tab is the disabled one
+			if (!enable)
 			{
-			/*	glColor3fv((backColor*1.3f).s);
-				renderMenuQuad(pos[0]+2, pos[1]+2, size[0]-2, size[1]-2);
-				glColor3fv((backColor*.7f).s);
-				renderMenuQuad(pos[0], pos[1], size[0]-2, size[1]-2);*/
-				offsetText.set(1,1);
-#ifndef _DX_
-				if ((menuManager.hoveringControl == this || menuManager.activeControl == this) && isHoverable) glColor3fv((grayScale * .7f).s);
-				else glColor3fv(grayScale.s);
-#endif
+				ui::bar(x + 8, y + h - 3, w - 16, 3, ui::accent);
+				textColor = ui::text;
 			}
 			else
 			{
-			/*	glColor3fv((grayScale*.7f).s);
-				renderMenuQuad(pos[0]+2, pos[1]+2, size[0]-2, size[1]-2);
-				glColor3fv((grayScale*1.3f).s);
-				renderMenuQuad(pos[0], pos[1], size[0]-2, size[1]-2);*/
-#ifndef _DX_
-				if ((menuManager.hoveringControl == this) && isHoverable) glColor3fv((grayScale * 1.3f).s);
-				else glColor3fv(grayScale.s);
-#endif
+				ui::fillRect(x, y, w, h, ui::withAlpha(ui::hoverTint, ui::hoverTint.a * hoverFade * 1.5f), 5);
+				textColor = ui::mix(ui::textMuted, ui::text, hoverFade);
 			}
-			renderMenuQuad(pos[0]+2, pos[1]+2, size[0]-4, size[1]-4);
+			textSet = true;
+		}
+		else if (scrollPart && texture)
+		{
+			// scroll arrows: drawn by the texture block below, small and muted
+		}
+		else if (scrollPart && buttonPush)
+		{
+			// the scroll thumb: a thin rounded bar in the middle of its track
+			bool vertical = h >= w;
+			float t = 6;
+			UIColor c = ui::withAlpha(ui::text, pressed ? .45f : .18f + .17f * hoverFade);
+			if (vertical) ui::fillRect(x + (w - t) / 2, y + 2, t, h - 4, c, t / 2);
+			else ui::fillRect(x + 2, y + (h - t) / 2, w - 4, t, c, t / 2);
+		}
+		else if (scrollPart)
+		{
+			// the scroll track
+			ui::fillRect(x + w / 2 - 3, y, 6, h, ui::withAlpha(ui::field, .35f), 3);
+		}
+		else if (isCheckBox && texture)
+		{
+			// a picture you tick (map previews): an accent frame when ticked, drawn after the picture
+		}
+		else if (isCheckBox)
+		{
+			float s = (w < h ? w : h) - 4;
+			if (s > 22) s = 22;
+			float bx = x + (w - s) / 2, by = y + (h - s) / 2;
+			if (check)
+			{
+				ui::fillRect(bx, by, s, s, hovered ? ui::accentHover : ui::accent, 4);
+				ui::checkMark(bx, by, s, ui::textOnAccent);
+			}
+			else ui::rect(bx, by, s, s, ui::field, hovered ? ui::withAlpha(ui::accent, .6f) : ui::fieldLine, 4);
+		}
+		else if (slider)
+		{
+			float track = 4, knob = 14;
+			float frac = (valueMax > valueMin) ? (float)(value - valueMin) / (float)(valueMax - valueMin) : 0;
+			float tx = x + knob / 2, tw = w - knob - 40;   // room for the value on the right
+			ui::fillRect(tx, y + h / 2 - track / 2, tw, track, ui::withAlpha(ui::text, .14f), 2);
+			ui::fillRect(tx, y + h / 2 - track / 2, tw * frac, track, ui::accent, 2);
+			ui::fillRect(tx + tw * frac - knob / 2, y + h / 2 - knob / 2, knob, knob, (hovered || pressed) ? ui::accentHover : ui::text, knob / 2);
+		}
+		else if (buttonPush)
+		{
+			UIColor fill, line = ui::buttonLine;
+			if (primary && enable)
+			{
+				fill = pressed ? ui::mix(ui::accent, ui::buttonDown, .25f) : ui::mix(ui::accent, ui::accentHover, hoverFade);
+				textColor = ui::textOnAccent;
+				line = ui::withAlpha(ui::accent, 0);
+			}
+			else fill = pressed ? ui::buttonDown : ui::mix(ui::button, ui::buttonHover, hoverFade);
+			if (!enable) { fill = ui::withAlpha(fill, fill.a * .45f); textColor = ui::textMuted; }
+			if (haveFocus()) line = ui::accent;
+			ui::rect(x, y, w, h, fill, line, 5);
+			textSet = true;
+			if (pressed) offsetText.set(0, 1);
+		}
+		else if (editable)
+		{
+			UIColor line = haveFocus() ? ui::accent : ui::mix(ui::fieldLine, ui::withAlpha(ui::text, .25f), hoverFade);
+			ui::rect(x, y, w, h, ui::field, line, 4);
+		}
+		else if (selectableChildren)
+		{
+			ui::rect(x, y, w, h, ui::withAlpha(ui::field, .55f), ui::fieldLine, 6);
+		}
+		else if (frame3D)
+		{
+			ui::rect(x, y, w, h, ui::panel, ui::panelLine, 8);
 		}
 		else if (frame2D)
 		{
-		/*	glColor3fv(borderColor.s);
-			renderMenuQuad(pos[0], pos[1], size[0], size[1]);*/
-
-#ifndef _DX_
-			if ((menuManager.hoveringControl == this || menuManager.activeControl == this) && isHoverable) glColor3fv((grayScale * 1.2f).s);
-			else glColor3fv(grayScale.s);
-#endif
-			renderMenuQuad(pos[0]+2, pos[1]+2, size[0]-4, size[1]-4);
+			ui::rect(x, y, w, h, ui::withAlpha(ui::field, .55f), ui::fieldLine, 4);
 		}
 		else if (noFrame)
 		{
 		}
 		else
 		{
-#ifndef _DX_
-			if ((menuManager.hoveringControl == this || menuManager.activeControl == this) && isHoverable) glColor3fv((grayScale * 1.2f).s);
-			else glColor3fv(grayScale.s);
-#endif
-			renderMenuQuad(pos[0], pos[1], size[0], size[1]);
-		}
-		if (isCheckBox)
-		{
-#ifndef _DX_
-			glColor4f(0, 0, 0, .60f);
-#endif
-			renderMenuQuad(pos[0]+4, pos[1]+4, size[0]-8, size[1]-8);
+			ui::fillRect(x, y, w, h, ui::withAlpha(ui::panel, .6f), 6);
 		}
 	}
 
 	if (superPanel)
 	{
-		float x=(float)pos[0];
-		float y=(float)pos[1];
-		float w=(float)size[0];
-		float h=(float)size[1];
 		float ratio = h / w;
 #ifndef _DX_
 
-		glColor4f(1, 1, 1, .15f);
+		// the original's drifting smoke, kept faint behind the flat panels
+		glColor4f(1, 1, 1, .05f);
 		
 		glPushAttrib(GL_ENABLE_BIT);
 			glEnable(GL_TEXTURE_2D);
@@ -916,6 +993,19 @@ void CControl::render()
 			glEnd();
 		glPopAttrib();
 #endif
+	}
+	else if (texture && !isCheckBox && (frame3D || selectableChildren) && size[0] >= 600)
+	{
+		// openbv: a page's artwork (Menu1Back..Menu5Back) becomes the screen's backdrop while the page
+		// is open (CMenuManager::render draws it under everything) instead of filling the page
+		uiPageArt = texture;
+	}
+	else if (texture && scrollPart)
+	{
+		// scroll arrows: the game's arrow pictures, small and muted, centred
+		float s = (w < h ? w : h) * .6f;
+		glColor4f(ui::text.r, ui::text.g, ui::text.b, .35f + .4f * hoverFade);
+		renderTexturedQuad((int)(x + (w - s) / 2), (int)(y + (h - s) / 2), (int)s, (int)s, texture);
 	}
 	else if (texture)
 	{
@@ -961,36 +1051,26 @@ void CControl::render()
 			glPopAttrib();
 #endif
 		}
+		if (isCheckBox)
+		{
+			if (check) ui::lineRect(x - 2, y - 2, w + 4, h + 4, ui::accent, 6), ui::lineRect(x - 1, y - 1, w + 2, h + 2, ui::accent, 5);
+			else if (hovered) ui::lineRect(x - 1, y - 1, w + 2, h + 2, ui::withAlpha(ui::text, .35f), 5);
+		}
 	}
 
 	if (listener) listener->Paint(this);
 
-	if (check)
-	{
-#ifndef _DX_
-		glColor3fv(borderColor.s);
-#endif
-	//	glColor4f(1, 1, 1, .60f);
-		renderMenuQuad(pos[0]+6, pos[1]+6, size[0]-12, size[1]-12);
-	}
-
-	//--- Slider
-	if (slider)
-	{
-		int sliderPos = (int)(((float)(value - valueMin) / (float)(valueMax - valueMin)) * (float)(size[0]-10));
-#ifndef _DX_
-		glColor3fv(borderColor.s);
-#endif
-		renderMenuQuad(pos[0] + sliderPos-5 + 5, pos[1], 10, size[1]);
-		text = CString() + value;
-	}
-
+	// openbv: buttons and tabs pick their text colour from the theme; the rest keep the game's
+	if (textSet) foreColor.set(textColor.r, textColor.g, textColor.b);
+	bool uiTextMuted = (style == "SEPARATOR");
 
 	//--- Show the text in it (Clamp)
 	if (!text.isNull() || !isNull() || haveFocus())
 	{
 #ifndef _DX_
-		if (!enable) glColor3f(1,1,1);//.5f, .5f, .5f);
+		// openbv: disabled text is muted (it was white); section labels are small and muted
+		if (uiTextMuted) glColor3f(ui::textMuted.r, ui::textMuted.g, ui::textMuted.b);
+		else if (!enable && !tab && !textSet) glColor3f(ui::textMuted.r, ui::textMuted.g, ui::textMuted.b);
 		else glColor3fv(foreColor.s);
 		glPushAttrib(GL_SCISSOR_BIT | GL_ENABLE_BIT);
 			glEnable(GL_TEXTURE_2D);
@@ -1107,26 +1187,18 @@ void CControl::render()
 		children[i]->render();
 	}
 
+	// openbv: list rows: the selected one accent-tinted with a bar on its left, the hovered one lighter
+	// (the original inverted the selected row and tinted the hovered one yellow)
 	if (parent)
 	{
 		if (parent->selectedChild == this)
 		{
-#ifndef _DX_
-			glPushAttrib(GL_ENABLE_BIT);
-				glEnable(GL_COLOR_LOGIC_OP);
-				glLogicOp(GL_INVERT);
-				renderMenuQuad(pos[0], pos[1], size[0], size[1]);
-			glPopAttrib();
-#endif
+			ui::fillRect(x, y, w, h, ui::accentDim, 4);
+			ui::fillRect(x, y + 3, 3, h - 6, ui::accent, 1.5f);
 		}
-		if (parent->hoveringChild == this)
+		else if (parent->hoveringChild == this)
 		{
-#ifndef _DX_
-			glPushAttrib(GL_ENABLE_BIT);
-				glColor4f(1, 1, 0, .3f);
-				renderMenuQuad(pos[0], pos[1], size[0], size[1]);
-			glPopAttrib();
-#endif
+			ui::fillRect(x, y, w, h, ui::hoverTint, 4);
 		}
 	}
 

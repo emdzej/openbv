@@ -18,6 +18,7 @@
 
 #ifndef CONSOLE
 #include "Dialog.h"
+#include "ui.h"
 #include "CMenuManager.h"
 
 IDialog::IDialog(unsigned int font, CString dialogTitle, CVector2i size, DialogButtons buttons)
@@ -31,7 +32,7 @@ IDialog::IDialog(unsigned int font, CString dialogTitle, CVector2i size, DialogB
 
 	dialogRoot = new CControl();
 	dialogRoot->font = font;
-	dialogRoot->size.set(800, 600);
+	dialogRoot->size.set(UI_W, UI_H);
 	dialogRoot->backColor.set(.3f,.5f,.8f);
 	dialogRoot->foreColor.set(1,1,1);
 	dialogRoot->textShadow = true;

@@ -688,6 +688,8 @@ int bv2_gasm_init()
 	}
 
 	if (gameVar.r_bitdepth != 16 && gameVar.r_bitdepth != 32) gameVar.r_bitdepth = 32;
+	// openbv is 16:9 throughout (ui.h): the original's 4:3 pillarbox and stretch modes are gone.
+	gameVar.r_widescreen = 0;
 
 	dkcInit(30);
 
@@ -738,6 +740,10 @@ int bv2_gasm_init()
 bool bv2_gasm_frame()
 {
 	if (!dkwMainLoop(0)) return false;
+	// the window decides the resolution (dkw_gasm.cpp); dkiUpdate clamps the mouse to it
+	CVector2i res = dkwGetResolution();
+	resW = res[0];
+	resH = res[1];
 	mainLoopInterface.paint();
 	return true;
 }

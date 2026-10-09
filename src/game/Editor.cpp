@@ -18,6 +18,7 @@
 
 #ifndef CONSOLE
 #include "Editor.h"
+#include "ui.h"
 #include "Console.h"
 #include "CMenuManager.h"
 #include "FileIO.h"
@@ -91,7 +92,7 @@ Editor2::Editor2(CString mapName, unsigned int font, int sizeX, int sizeY)
 	// Editor root
 	editorRoot = new CControl();
 	editorRoot->font = font;
-	editorRoot->size.set(800,600);
+	editorRoot->size.set(UI_W, UI_H);
 	editorRoot->backColor.set(.3f,.5f,.8f);
 	editorRoot->foreColor.set(1,1,1);
 	editorRoot->textShadow = true;
@@ -99,7 +100,7 @@ Editor2::Editor2(CString mapName, unsigned int font, int sizeX, int sizeY)
 
 	// Create the menu items and their hotkeys
 	CControl* spacer = 0;
-	frameMain = new CControl(editorRoot, CVector2i(0, 0), CVector2i(800, 50), "", this, "FRAME", 0, CONTROL_SNAP_TOP, 0, true);
+	frameMain = new CControl(editorRoot, CVector2i(0, 0), CVector2i(UI_W, 50), "", this, "FRAME", 0, CONTROL_SNAP_TOP, 0, true);
 	btn_file    = new CControl(frameMain, CVector2i(10, 10), CVector2i( 70, 30), "File",    this, "BUTTON");
 	spacer      = new CControl(frameMain, CVector2i( 5, 10), CVector2i( 10, 30), "",        this, "LABEL",  btn_file,    CONTROL_SNAP_RIGHT);
 	btn_terrain = new CControl(frameMain, CVector2i(10, 10), CVector2i( 70, 30), "Terrain", this, "BUTTON", spacer,      CONTROL_SNAP_RIGHT);
@@ -501,7 +502,7 @@ void Editor2::render()
 
 			// Render cursor position
 			glClear(GL_DEPTH_BUFFER_BIT);
-			dkglPushOrtho(800, 600);
+			dkglPushOrtho(UI_W, UI_H);
 				glPushAttrib(GL_ENABLE_BIT);
 					glDisable(GL_DEPTH_TEST);
 					glEnable(GL_BLEND);
@@ -523,7 +524,7 @@ void Editor2::render()
 
 void Editor2::renderMiniMap()
 {
-	CVector2i res(800,600);// = dkwGetResolution();
+	CVector2i res(UI_W, UI_H);// = dkwGetResolution();
 #ifndef _DX_
 	dkglPushOrtho((float)res[0], (float)res[1]);
 		glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
@@ -586,7 +587,7 @@ void Editor2::renderSquare(const CControl * control, int distance, const CColor4
 void Editor2::renderSelection() const
 {
 #ifndef _DX_
-	dkglPushOrtho(800, 600);
+	dkglPushOrtho(UI_W, UI_H);
 		glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 			glDisable(GL_DEPTH_TEST);
 			glEnable(GL_BLEND);

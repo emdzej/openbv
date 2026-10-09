@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include "gasm.h"
 #include "gasm_vfile.h"
+#include "embedded_assets.h"
 
 #define OPENBV_PATH_MAX 512
 
@@ -75,6 +76,43 @@ static int asset_exists(const char *path)
 
 FILE *__real_fopen(const char *path, const char *mode);
 
+/* openbv's own UI files (embedded_assets.h), rebuilt into a TGA the first time they are opened:
+   the original's header (uncompressed, 32 bits, bottom-up), white pixels with the stored alpha. */
+static const unsigned char *embedded_file(const char *path, size_t *size)
+{
+	static unsigned char *built[16];
+	static size_t builtSize[16];
+	for (int i = 0; openbv_embedded_assets[i].name && i < 16; i++)
+	{
+		const struct openbv_embedded *e = &openbv_embedded_assets[i];
+		if (strcasecmp(e->name, path) != 0) continue;
+		if (!built[i])
+		{
+			size_t pixels = (size_t)e->width * e->height;
+			unsigned char *t = (unsigned char *)malloc(18 + pixels * 4);
+			if (!t) return NULL;
+			memset(t, 0, 18);
+			t[2] = 2;
+			t[12] = e->width & 255; t[13] = e->width >> 8;
+			t[14] = e->height & 255; t[15] = e->height >> 8;
+			t[16] = 32; t[17] = 8;
+			unsigned char *p = t + 18;
+			size_t n = 0;
+			for (unsigned int k = 0; k + 1 < e->rleSize && n < pixels; k += 2)
+				for (int r = 0; r < e->alphaRle[k] && n < pixels; r++, n++)
+				{
+					p[n * 4 + 0] = p[n * 4 + 1] = p[n * 4 + 2] = 255;
+					p[n * 4 + 3] = e->alphaRle[k + 1];
+				}
+			built[i] = t;
+			builtSize[i] = 18 + pixels * 4;
+		}
+		*size = builtSize[i];
+		return built[i];
+	}
+	return NULL;
+}
+
 FILE *__wrap_fopen(const char *path, const char *mode)
 {
 	char p[OPENBV_PATH_MAX], key[256];
@@ -100,6 +138,9 @@ FILE *__wrap_fopen(const char *path, const char *mode)
 		}
 		return gasm_vfile_open(GASM_VFILE_STORAGE, key, mode);
 	}
+	size_t esize;
+	const unsigned char *e = embedded_file(p, &esize);
+	if (e) return fmemopen((void *)e, esize, "rb");
 	if (haveKey && storage_has(key)) return gasm_vfile_open(GASM_VFILE_STORAGE, key, mode);
 	return gasm_vfile_open(GASM_VFILE_ASSET, p, mode);
 }
@@ -229,6 +270,8 @@ int __wrap_stat(const char *path, struct stat *st)
 	char p[OPENBV_PATH_MAX], key[256];
 	normalize(path, p, sizeof(p));
 	memset(st, 0, sizeof(*st));
+	size_t esize;
+	if (embedded_file(p, &esize)) { st->st_mode = S_IFREG | 0444; st->st_size = esize; return 0; }
 	if (storage_key(p, key, sizeof(key)))
 	{
 		int32_t len = gasm_storage_get(key, (uint32_t)strlen(key), 0, 0);

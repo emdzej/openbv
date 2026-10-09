@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "COption.h"
+#include "ui.h"
 #include "GameVar.h"
 #include "KeyManager.h"
 #include "Scene.h"
@@ -35,7 +36,7 @@ COption::COption(CControl * in_parent, CControl * in_alignTo)
 	parent = in_parent;
 
 	//--- Da big frame
-	instance = new CControl(parent, CVector2i(0,0), CVector2i(736, 506), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
+	instance = new CControl(parent, CVector2i(0,0), CVector2i(UI_PAGE_W, UI_PAGE_H), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
 	instance->texture = dktCreateTextureFromFile("main/textures/Menu4Back.tga", DKT_FILTER_LINEAR);
 	instance->borderColor.set(1,.5f,.25f);
 
@@ -89,50 +90,28 @@ COption::COption(CControl * in_parent, CControl * in_alignTo)
 		chk_animatedMenus = new CControl(instance, CVector2i(10,10), CVector2i(25,25),"", this, "CHECK", label1, CONTROL_SNAP_RIGHT);
 		chk_animatedMenus->check = gameVar.r_animatedMenu;
 
-		//--- Widescreen
-		label1 = new CControl(instance, CVector2i(20,10), CVector2i(200,90),"View Mode:", this, "LABEL", label1, CONTROL_SNAP_BOTTOM);
-		label1->textAlign = CONTROL_TEXTALIGN_MIDDLERIGHT;
-		label1->toolTips = "(Need to reboot the game).";
+		// openbv: 16:9 only, so no view mode (the original's Standard / Widescreen (Stretch) / (Bars));
+		// lst_viewMode stays, hidden, for the code that saves the options
 		lst_viewMode = new CControl(instance, CVector2i(10,10), CVector2i(300,90),"", this, "LISTBOX", label1, CONTROL_SNAP_RIGHT);
 		CControl * item = new CControl(lst_viewMode, CVector2i(10,10), CVector2i(150,20),"Standard", this, "LABEL");
-		item = new CControl(lst_viewMode, CVector2i(10,10), CVector2i(150,20),"Widescreen (Stretch)", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-		item = new CControl(lst_viewMode, CVector2i(10,10), CVector2i(150,20),"Widescreen (Bars)", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-		if (gameVar.r_widescreen == 0) lst_viewMode->selectChild(0);
-		if (gameVar.r_widescreen == 1) lst_viewMode->selectChild(1);
-		if (gameVar.r_widescreen == 2) lst_viewMode->selectChild(2);
+		lst_viewMode->selectChild(0);
+		lst_viewMode->visible = false;
 
 		//--- Screen resolution
 		label1 = new CControl(instance, CVector2i(20,10), CVector2i(200,150),"Screen resolution:", this, "LABEL", label1, CONTROL_SNAP_BOTTOM);
 		label1->textAlign = CONTROL_TEXTALIGN_MIDDLERIGHT;
-		label1->toolTips = "(Need to reboot the game).";
-
-		if(gameVar.r_widescreen)
+		label1->toolTips = "The size of the window (the game fills it at 16:9).";
 		{
+			// openbv: the 16:9 sizes
 			lst_resolution = new CControl(instance, CVector2i(10,10), CVector2i(300,150),"", this, "LISTBOX", label1, CONTROL_SNAP_RIGHT);
-			CControl * item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"960 x 600", this, "LABEL");
-			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1280 x 800", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1440 x 900", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1680 x 1050", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1920 x 1200", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-			if (gameVar.r_resolution == CVector2i(960, 600)) lst_resolution->selectChild(0);
-			if (gameVar.r_resolution == CVector2i(1280, 800)) lst_resolution->selectChild(1);
-			if (gameVar.r_resolution == CVector2i(1440, 900)) lst_resolution->selectChild(2);
-			if (gameVar.r_resolution == CVector2i(1680, 1050)) lst_resolution->selectChild(3);
-			if (gameVar.r_resolution == CVector2i(1920, 1200)) lst_resolution->selectChild(4);
-		}
-		else
-		{
-			lst_resolution = new CControl(instance, CVector2i(10,10), CVector2i(300,150),"", this, "LISTBOX", label1, CONTROL_SNAP_RIGHT);
-			CControl * item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"640 x 480", this, "LABEL");
-			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"800 x 600", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1024 x 768", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1280 x 960", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1600 x 1200", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
-			if (gameVar.r_resolution == CVector2i(640, 480)) lst_resolution->selectChild(0);
-			if (gameVar.r_resolution == CVector2i(800, 600)) lst_resolution->selectChild(1);
-			if (gameVar.r_resolution == CVector2i(1024, 768)) lst_resolution->selectChild(2);
-			if (gameVar.r_resolution == CVector2i(1280, 960)) lst_resolution->selectChild(3);
-			if (gameVar.r_resolution == CVector2i(1600, 1200)) lst_resolution->selectChild(4);
+			CControl * item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1280 x 720", this, "LABEL");
+			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1600 x 900", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
+			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"1920 x 1080", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
+			item = new CControl(lst_resolution, CVector2i(10,10), CVector2i(150,20),"2560 x 1440", this, "LABEL", item, CONTROL_SNAP_BOTTOM);
+			if (gameVar.r_resolution == CVector2i(1280, 720)) lst_resolution->selectChild(0);
+			if (gameVar.r_resolution == CVector2i(1600, 900)) lst_resolution->selectChild(1);
+			if (gameVar.r_resolution == CVector2i(1920, 1080)) lst_resolution->selectChild(2);
+			if (gameVar.r_resolution == CVector2i(2560, 1440)) lst_resolution->selectChild(3);
 		}
 		
 
@@ -663,50 +642,15 @@ void COption::Click(CControl * control)
 		gameVar.r_fullScreen = chk_fullScreen->check;
 		gameVar.cl_preciseCursor = chk_preciseCursor->check;
 
-		if(lst_viewMode->selectedIndex != gameVar.r_widescreen)
+		// openbv: 16:9 only (the original switched between 4:3 and 16:10 lists here)
+		gameVar.r_widescreen = 0;
+		switch (lst_resolution->selectedIndex)
 		{
-			if(lst_viewMode->selectedIndex > 0)
-			{
-				lst_resolution->children[2]->text = "960 x 600";
-				lst_resolution->children[3]->text = "1280 x 800";
-				lst_resolution->children[4]->text = "1440 x 900";
-				lst_resolution->children[5]->text = "1680 x 1050";
-				lst_resolution->children[6]->text = "1920 x 1200";		
-			}
-			else
-			{
-				lst_resolution->children[2]->text = "640 x 480";
-				lst_resolution->children[3]->text = "800 x 600";
-				lst_resolution->children[4]->text = "1024 x 768";
-				lst_resolution->children[5]->text = "1280 x 960";
-				lst_resolution->children[6]->text = "1600 x 1200";
-			}
-		}
-		gameVar.r_widescreen = lst_viewMode->selectedIndex;
-
-		if(gameVar.r_widescreen > 0)
-		{
-			switch (lst_resolution->selectedIndex)
-			{
-			case 0: gameVar.r_resolution.set(960, 600); break;
-			case 1: gameVar.r_resolution.set(1280, 800); break;
-			case 2: gameVar.r_resolution.set(1440, 900); break;
-			case 3: gameVar.r_resolution.set(1680, 1050); break;
-			case 4: gameVar.r_resolution.set(1920, 1200); break;
-			default: gameVar.r_resolution.set(1280, 800); break;
-			}
-		}
-		else
-		{
-			switch (lst_resolution->selectedIndex)
-			{
-			case 0: gameVar.r_resolution.set(640, 480); break;
-			case 1: gameVar.r_resolution.set(800, 600); break;
-			case 2: gameVar.r_resolution.set(1024, 768); break;
-			case 3: gameVar.r_resolution.set(1280, 960); break;
-			case 4: gameVar.r_resolution.set(1600, 1200); break;
-			default: gameVar.r_resolution.set(800, 600); break;
-			}
+		case 0: gameVar.r_resolution.set(1280, 720); break;
+		case 1: gameVar.r_resolution.set(1600, 900); break;
+		case 2: gameVar.r_resolution.set(1920, 1080); break;
+		case 3: gameVar.r_resolution.set(2560, 1440); break;
+		default: gameVar.r_resolution.set(1920, 1080); break;
 		}
 
 		switch (lst_bitDepth->selectedIndex)
@@ -825,32 +769,18 @@ void COption::Validate(CControl * control)
 		gameVar.r_showStats = chk_showStats->check;
 		gameVar.r_showLatency = chk_showLatency->check;
 		gameVar.r_fullScreen = chk_fullScreen->check;
-		gameVar.r_widescreen = lst_viewMode->selectedIndex;
 		gameVar.cl_preciseCursor = chk_preciseCursor->check;
-		if(gameVar.r_widescreen > 0)
+		// openbv: 16:9 only (as above)
+		gameVar.r_widescreen = 0;
+		switch (lst_resolution->selectedIndex)
 		{
-			switch (lst_resolution->selectedIndex)
-			{
-			case 0: gameVar.r_resolution.set(960, 600); break;
-			case 1: gameVar.r_resolution.set(1280, 800); break;
-			case 2: gameVar.r_resolution.set(1440, 900); break;
-			case 3: gameVar.r_resolution.set(1680, 1050); break;
-			case 4: gameVar.r_resolution.set(1920, 1200); break;
-			default: gameVar.r_resolution.set(1280, 800); break;
-			}
+		case 0: gameVar.r_resolution.set(1280, 720); break;
+		case 1: gameVar.r_resolution.set(1600, 900); break;
+		case 2: gameVar.r_resolution.set(1920, 1080); break;
+		case 3: gameVar.r_resolution.set(2560, 1440); break;
+		default: gameVar.r_resolution.set(1920, 1080); break;
 		}
-		else
-		{
-			switch (lst_resolution->selectedIndex)
-			{
-			case 0: gameVar.r_resolution.set(640, 480); break;
-			case 1: gameVar.r_resolution.set(800, 600); break;
-			case 2: gameVar.r_resolution.set(1024, 768); break;
-			case 3: gameVar.r_resolution.set(1280, 960); break;
-			case 4: gameVar.r_resolution.set(1600, 1200); break;
-			default: gameVar.r_resolution.set(800, 600); break;
-			}
-		}
+
 		switch (lst_bitDepth->selectedIndex)
 		{
 		case 0: gameVar.r_bitdepth = 16; break;

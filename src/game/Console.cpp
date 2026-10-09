@@ -17,6 +17,9 @@
 */
 
 #include "Console.h"
+#include "Helper.h"
+#include "ui.h"
+#include "UITheme.h"
 #include "FileIO.h"
 #include "CMaster.h"
 #ifndef CONSOLE
@@ -192,8 +195,9 @@ void Console::render()
   int i;
 	if (m_vPos > 0)
 	{
-		CVector2i res = dkwGetResolution();
-		if(gameVar.r_widescreen > 1) res[0] = static_cast<int>(res[1]*1.333f);
+		// openbv: in the UI's units (it was in screen pixels, so it shrank at high resolutions), restyled:
+		// a dark sheet, a hairline, the input line in a field
+		CVector2i res(UI_W, UI_H);
 
 #ifndef _DX_
 		// on print ?l'?ran les 10 dernier messages encouru
@@ -203,39 +207,16 @@ void Console::render()
 			glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				glBegin(GL_QUADS);
-					glColor4f(0, 0, 0, .75f);
-					glVertex2i(0,-((gameVar.c_huge)?510:310));
-					glColor4f(.3f, .3f, .3f, .75f);
-					glVertex2i(0,0);
-					glVertex2i(res[0],0);
-					glColor4f(0, 0, 0, .75f);
-					glVertex2i(res[0],-((gameVar.c_huge)?510:310));
-				glEnd();
-				glColor4f(.7f, .8f, 1, .75f);
-				glBegin(GL_QUADS);
-					glVertex2i(0,0);
-					glVertex2i(0,5);
-					glVertex2i(res[0],5);
-					glVertex2i(res[0],0);
-				glEnd();
-				glColor4f(.3f, .3f, .3f, .75f);
-				glBegin(GL_QUADS);
-					glVertex2i(0,5);
-					glVertex2i(0,35);
-					glVertex2i(res[0],35);
-					glVertex2i(res[0],5);
-				glEnd();
-				glColor4f(.7f, .8f, 1, .75f);
-				glBegin(GL_QUADS);
-					glVertex2i(0,35);
-					glVertex2i(0,40);
-					glVertex2i(res[0],40);
-					glVertex2i(res[0],35);
-				glEnd();
+				{
+					float top = -(float)((gameVar.c_huge)?510:310);
+					ui::bar(0, top, (float)res[0], -top, ui::withAlpha(ui::panel, .94f));
+					ui::bar(0, 0, (float)res[0], 40, ui::withAlpha(ui::field, .96f));
+					ui::bar(0, 0, (float)res[0], 1, ui::panelLine);
+					ui::bar(0, 39, (float)res[0], 1, ui::withAlpha(ui::accent, .8f));
+				}
 				glEnable(GL_TEXTURE_2D);
-				glColor3f(1,1,0);
-				dkfPrint(30, res[0] - 190.0f, 5, 0, "F1 - events, F2 - chat");
+				glColor3f(ui::textMuted.r, ui::textMuted.g, ui::textMuted.b);
+				printRightText(res[0] - 16.0f, 10, 20, "F1 - events, F2 - chat");
 				glColor3f(1,1,1);
 				m_currentText->print(30, 20, 5, 0);
 				glPushMatrix();
@@ -259,16 +240,7 @@ void Console::render()
 				glPopMatrix();
 				if (showRecognitionVar)
 				{
-					glDisable(GL_TEXTURE_2D);
-					glBegin(GL_QUADS);
-						glColor4f(0, 0, 0, .75f);
-						glVertex2i(0,45);
-						glColor4f(.3f, .3f, .3f, .75f);
-						glVertex2i(0,45+30*CONSOLE_MAX_RECOGNITION_VAR+5);
-						glVertex2i(res[0],45+30*CONSOLE_MAX_RECOGNITION_VAR+5);
-						glColor4f(0, 0, 0, .75f);
-						glVertex2i(res[0],45);
-					glEnd();
+					ui::rect(10, 44, (float)res[0] * .5f, (float)(30*CONSOLE_MAX_RECOGNITION_VAR+8), ui::withAlpha(ui::panel, .96f), ui::fieldLine, 5);
 					glEnable(GL_TEXTURE_2D);
 					glColor3f(1,1,1);
 					glPushMatrix();

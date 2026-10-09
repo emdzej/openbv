@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "CMainTab.h"
+#include "ui.h"
 #include "CMenuManager.h"
 #include "Console.h"
 #include "CMaster.h"
@@ -39,7 +40,8 @@ CMainTab::CMainTab(CControl * in_parent)
 	parent = in_parent;
 
 	//btn_userLogin = new CControl(parent, CVector2i(32,32),CVector2i(128,25),"Babo Profile",this,"BUTTON");
-	btn_news = new CControl(parent, CVector2i(32,32),CVector2i(128,25),"News",this,"BUTTON");
+	// openbv: the pages snap under this first News button, so it sets where they start (ui.h)
+	btn_news = new CControl(parent, CVector2i(UI_MARGIN, UI_TAB_Y),CVector2i(128,UI_TAB_H),"News",this,"BUTTON");
 
 	//userLogin = new CUserLogin(in_parent, btn_userLogin);
 	news = new CNews(in_parent, btn_news);
@@ -75,32 +77,38 @@ CMainTab::CMainTab(CControl * in_parent)
 	}
 	
 
-	btn_resume = new CControl(parent, CVector2i(0,0), CVector2i(100,25), "Resume Game", this, "BUTTON");
+	// openbv: the redesigned top bar: text tabs from the left (the open page's tab is underlined in the
+	// accent colour), Resume Game and Quit on the right. Same buttons, same behaviour.
+	btn_resume = new CControl(parent, CVector2i(UI_W - UI_MARGIN - 40 - 8 - 140, UI_TAB_Y), CVector2i(140,UI_TAB_H), "Resume Game", this, "BUTTON");
 	btn_resume->enable = false;
+	btn_resume->primary = true;
 
 	//--- Buttons at the top
 	//delete btn_userLogin;
 	delete btn_news;
 	//btn_userLogin = new CControl(parent, CVector2i(32,32),CVector2i(100,25),"Babo Profile",this,"BUTTON");
 	//btn_userLogin->toolTips = "User login information and stats.";
-	btn_news = new CControl(parent, CVector2i(32,32),CVector2i(100,25),"News",this,"BUTTON");
+	btn_news = new CControl(parent, CVector2i(UI_MARGIN, UI_TAB_Y),CVector2i(86,UI_TAB_H),"News",this,"BUTTON");
 	btn_news->toolTips = "News from Babo World.";
-	btn_profile = new CControl(parent, CVector2i(32,32),CVector2i(100,25),"Profile",this,"BUTTON", btn_news, CONTROL_SNAP_RIGHT);
+	btn_profile = new CControl(parent, CVector2i(32,32),CVector2i(92,UI_TAB_H),"Profile",this,"BUTTON", btn_news, CONTROL_SNAP_RIGHT, 2);
 	btn_profile->toolTips = "User login information and stats.";
-	btn_browser = new CControl(parent, CVector2i(32,32),CVector2i(100,25),"Game Browser",this,"BUTTON", btn_profile, CONTROL_SNAP_RIGHT);
+	btn_browser = new CControl(parent, CVector2i(32,32),CVector2i(150,UI_TAB_H),"Game Browser",this,"BUTTON", btn_profile, CONTROL_SNAP_RIGHT, 2);
 	btn_browser->toolTips = "Browse games over the Internet or on a local network.";
 	//btn_friends = new CControl(parent, CVector2i(32,32),CVector2i(100,25),"Friends",this,"BUTTON", btn_browser, CONTROL_SNAP_RIGHT);
 	//btn_friends->toolTips = "Find out where your friends are playing.";
-	btn_create = new CControl(parent, CVector2i(32,32),CVector2i(90,25),"Host",this,"BUTTON", btn_browser, CONTROL_SNAP_RIGHT);
+	btn_create = new CControl(parent, CVector2i(32,32),CVector2i(76,UI_TAB_H),"Host",this,"BUTTON", btn_browser, CONTROL_SNAP_RIGHT, 2);
 	btn_create->toolTips = "Host a game and play in it.\nSee CTF.cfg for more informations about dedicating a server.";
-	btn_editor = new CControl(parent, CVector2i(32,32),CVector2i(100,25),"Map Editor",this,"BUTTON", btn_create, CONTROL_SNAP_RIGHT);
+	btn_editor = new CControl(parent, CVector2i(32,32),CVector2i(126,UI_TAB_H),"Map Editor",this,"BUTTON", btn_create, CONTROL_SNAP_RIGHT, 2);
 	btn_editor->toolTips = "Edit or create a new map.";
-	btn_option = new CControl(parent, CVector2i(32,32),CVector2i(80,25),"Options",this,"BUTTON", btn_editor, CONTROL_SNAP_RIGHT);
+	btn_option = new CControl(parent, CVector2i(32,32),CVector2i(102,UI_TAB_H),"Options",this,"BUTTON", btn_editor, CONTROL_SNAP_RIGHT, 2);
 	btn_option->toolTips = "Setup all game options.";
-	btn_credits = new CControl(parent, CVector2i(32,32),CVector2i(80,25),"Credits",this,"BUTTON", btn_option, CONTROL_SNAP_RIGHT);
+	btn_credits = new CControl(parent, CVector2i(32,32),CVector2i(100,UI_TAB_H),"Credits",this,"BUTTON", btn_option, CONTROL_SNAP_RIGHT, 2);
 	btn_credits->toolTips = "See who are the dudes who created this bloody hell!!";
-	btn_quit = new CControl(parent, CVector2i(32,32),CVector2i(48,25),"\x4X",this,"BUTTON", btn_credits, CONTROL_SNAP_RIGHT);
+	btn_quit = new CControl(parent, CVector2i(UI_W - UI_MARGIN - 40, UI_TAB_Y),CVector2i(40,UI_TAB_H),"\x4X",this,"BUTTON");
 	btn_quit->toolTips = "Quit the game. :(";
+
+	CControl *tabs[] = {btn_news, btn_profile, btn_browser, btn_create, btn_editor, btn_option, btn_credits};
+	for (int t = 0; t < 7; t++) tabs[t]->tab = true;
 
 	//userLogin->setVisible(true);
 	news->setVisible(true);

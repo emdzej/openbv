@@ -18,6 +18,7 @@
 
 #ifndef CONSOLE
 #include "Client.h"
+#include "ui.h"
 #include "netPacket.h"
 #include "Console.h"
 #include "Helper.h"
@@ -79,34 +80,35 @@ Client::Client(Game * pGame)
 	//--- Overall control
 	clientRoot = new CControl();
 	clientRoot->font = font;
-	clientRoot->size.set(800,600);
+	clientRoot->size.set(UI_W, UI_H);
 	clientRoot->backColor.set(.3f,.5f,.8f);
 	clientRoot->foreColor.set(1,1,1);
 	clientRoot->textShadow = true;
 	clientRoot->noFill = true;
 
 	// On cré nos menu bitch
-	btn_autoAssign = new CControl(clientRoot, CVector2i(25, 130), CVector2i(200,30), "Auto assign team", this, "BUTTON");
-	btn_blueTeam = new CControl(clientRoot, CVector2i(25, 130), CVector2i(200,30), "\x1Join blue team", this, "BUTTON", btn_autoAssign, CONTROL_SNAP_BOTTOM);
-	btn_redTeam = new CControl(clientRoot, CVector2i(25, 130), CVector2i(200,30), "\x4Join red team", this, "BUTTON", btn_blueTeam, CONTROL_SNAP_BOTTOM);
-	btn_spectator = new CControl(clientRoot, CVector2i(25, 130), CVector2i(200,30), "Join spectator", this, "BUTTON", btn_redTeam, CONTROL_SNAP_BOTTOM);
-	btn_mainMenu = new CControl(clientRoot, CVector2i(25, 130), CVector2i(200,30), "<- Main menu", this, "BUTTON", btn_spectator, CONTROL_SNAP_BOTTOM, 30);
-	btn_disconnect = new CControl(clientRoot, CVector2i(25, 130), CVector2i(200,30), CString("\x4") + "Disconnect", this, "BUTTON", btn_mainMenu, CONTROL_SNAP_BOTTOM);
+	// openbv: the columns centred on the 16:9 screen (they were placed for 800 units)
+	btn_autoAssign = new CControl(clientRoot, CVector2i(UI_RX / 2 + 25, 130), CVector2i(200,30), "Auto assign team", this, "BUTTON");
+	btn_blueTeam = new CControl(clientRoot, CVector2i(UI_RX / 2 + 25, 130), CVector2i(200,30), "\x1Join blue team", this, "BUTTON", btn_autoAssign, CONTROL_SNAP_BOTTOM);
+	btn_redTeam = new CControl(clientRoot, CVector2i(UI_RX / 2 + 25, 130), CVector2i(200,30), "\x4Join red team", this, "BUTTON", btn_blueTeam, CONTROL_SNAP_BOTTOM);
+	btn_spectator = new CControl(clientRoot, CVector2i(UI_RX / 2 + 25, 130), CVector2i(200,30), "Join spectator", this, "BUTTON", btn_redTeam, CONTROL_SNAP_BOTTOM);
+	btn_mainMenu = new CControl(clientRoot, CVector2i(UI_RX / 2 + 25, 130), CVector2i(200,30), "<- Main menu", this, "BUTTON", btn_spectator, CONTROL_SNAP_BOTTOM, 30);
+	btn_disconnect = new CControl(clientRoot, CVector2i(UI_RX / 2 + 25, 130), CVector2i(200,30), CString("\x4") + "Disconnect", this, "BUTTON", btn_mainMenu, CONTROL_SNAP_BOTTOM);
 
 	// Nos boutons pour choisir notre gun
-	btn_guns[0] = new CControl(clientRoot, CVector2i(250, 130 + 0 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_SMG]->weaponName, this, "BUTTON");
-	btn_guns[1] = new CControl(clientRoot, CVector2i(250, 130 + 1 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_SHOTGUN]->weaponName, this, "BUTTON");
-	btn_guns[2] = new CControl(clientRoot, CVector2i(250, 130 + 2 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_SNIPER]->weaponName, this, "BUTTON");
-	btn_guns[3] = new CControl(clientRoot, CVector2i(250, 130 + 3 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_DUAL_MACHINE_GUN]->weaponName, this, "BUTTON");
-	btn_guns[4] = new CControl(clientRoot, CVector2i(250, 130 + 4 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_CHAIN_GUN]->weaponName, this, "BUTTON");
-	btn_guns[5] = new CControl(clientRoot, CVector2i(250, 130 + 5 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_BAZOOKA]->weaponName, this, "BUTTON");
-	btn_guns[6] = new CControl(clientRoot, CVector2i(250, 130 + 6 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_PHOTON_RIFLE]->weaponName, this, "BUTTON");
-	btn_guns[7] = new CControl(clientRoot, CVector2i(250, 130 + 7 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_FLAME_THROWER]->weaponName, this, "BUTTON");
-	btn_meleeguns[0] = new CControl(clientRoot, CVector2i(475, 130 + 0 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_KNIVES]->weaponName, this, "BUTTON");
-	btn_meleeguns[1] = new CControl(clientRoot, CVector2i(475, 130 + 1 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_NUCLEAR]->weaponName, this, "BUTTON");
-	btn_meleeguns[2] = new CControl(clientRoot, CVector2i(475, 130 + 2 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_SHIELD]->weaponName, this, "BUTTON");
+	btn_guns[0] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 250, 130 + 0 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_SMG]->weaponName, this, "BUTTON");
+	btn_guns[1] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 250, 130 + 1 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_SHOTGUN]->weaponName, this, "BUTTON");
+	btn_guns[2] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 250, 130 + 2 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_SNIPER]->weaponName, this, "BUTTON");
+	btn_guns[3] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 250, 130 + 3 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_DUAL_MACHINE_GUN]->weaponName, this, "BUTTON");
+	btn_guns[4] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 250, 130 + 4 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_CHAIN_GUN]->weaponName, this, "BUTTON");
+	btn_guns[5] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 250, 130 + 5 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_BAZOOKA]->weaponName, this, "BUTTON");
+	btn_guns[6] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 250, 130 + 6 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_PHOTON_RIFLE]->weaponName, this, "BUTTON");
+	btn_guns[7] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 250, 130 + 7 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_FLAME_THROWER]->weaponName, this, "BUTTON");
+	btn_meleeguns[0] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 475, 130 + 0 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_KNIVES]->weaponName, this, "BUTTON");
+	btn_meleeguns[1] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 475, 130 + 1 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_NUCLEAR]->weaponName, this, "BUTTON");
+	btn_meleeguns[2] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 475, 130 + 2 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_SHIELD]->weaponName, this, "BUTTON");
 	#ifdef _PRO_
-		btn_meleeguns[3] = new CControl(clientRoot, CVector2i(475, 130 + 3 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_MINIBOT]->weaponName, this, "BUTTON");
+		btn_meleeguns[3] = new CControl(clientRoot, CVector2i(UI_RX / 2 + 475, 130 + 3 * 40), CVector2i(200,30), gameVar.weapons[WEAPON_MINIBOT]->weaponName, this, "BUTTON");
 	#endif
 	currentGun = btn_guns[gameVar.cl_primaryWeapon/*0*/];
 	currentMelee = btn_meleeguns[gameVar.cl_secondaryWeapon/*0*/];

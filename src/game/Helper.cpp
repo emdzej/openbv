@@ -63,7 +63,7 @@ void printCenterText(float x, float y, float size, const CString & text)
 #ifndef _DX_
 		glGetFloatv(GL_CURRENT_COLOR, curColor);
 		glPushAttrib(GL_CURRENT_BIT);
-			glColor4f(0,0,0, curColor[3]);
+			glColor4f(0,0,0, curColor[3] * .5f);   // openbv: a softer shadow for the new font
 			dkfPrint(size,x-width/2+shadowDis,y+shadowDis,0,textColorLess(text).s);
 		glPopAttrib();
 		glColor4fv(curColor);
@@ -85,7 +85,7 @@ void printLeftText(float x, float y, float size, const CString & text)
 #ifndef _DX_
 		glGetFloatv(GL_CURRENT_COLOR, curColor);
 		glPushAttrib(GL_CURRENT_BIT);
-			glColor4f(0,0,0, curColor[3]);
+			glColor4f(0,0,0, curColor[3] * .5f);   // openbv: a softer shadow for the new font
 			dkfPrint(size,x/*+shadowDis*/,y+1,0,textColorLess(text).s);
 		glPopAttrib();
 		glColor4fv(curColor);
@@ -108,7 +108,7 @@ void printRightText(float x, float y, float size, const CString & text)
 #ifndef _DX_
 		glGetFloatv(GL_CURRENT_COLOR, curColor);
 		glPushAttrib(GL_CURRENT_BIT);
-			glColor4f(0,0,0, curColor[3]);
+			glColor4f(0,0,0, curColor[3] * .5f);   // openbv: a softer shadow for the new font
 			dkfPrint(size,x-width+shadowDis,y+shadowDis,0,textColorLess(text).s);
 		glPopAttrib();
 		glColor4fv(curColor);

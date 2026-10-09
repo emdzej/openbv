@@ -648,8 +648,10 @@ GameVar::GameVar()
 	r_fullScreen = true;
 #endif
 	dksvarRegister(CString("r_fullScreen [bool : true | false (default true)]"), &r_fullScreen, true);
-	r_resolution.set(800,600);
-	dksvarRegister(CString("r_resolution [vector2i : (default 800 600)]"), &r_resolution, true);
+	// openbv: 16:9, Full HD (the original: 800x600). On gasm the game follows the window; this is the
+	// size it asks for.
+	r_resolution.set(1920,1080);
+	dksvarRegister(CString("r_resolution [vector2i : (default 1920 1080)]"), &r_resolution, true);
 	r_bitdepth = 32;
 	dksvarRegister(CString("r_bitdepth [int : 16 | 32 (default 32)]"), &r_bitdepth, 16, 32,
 		LIMIT_MIN | LIMIT_MAX, true);

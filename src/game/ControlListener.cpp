@@ -18,6 +18,7 @@
 
 #ifndef CONSOLE
 #include "ControlListener.h"
+#include "ui.h"
 #include "Zeven.h"
 
 
@@ -67,7 +68,7 @@ void ControlListener::updateMenu(float delay)
 void ControlListener::renderMenu()
 {
 #ifndef _DX_
-	dkglPushOrtho(800,600);
+	dkglPushOrtho(UI_W, UI_H);
 		glPushAttrib(GL_ENABLE_BIT);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -76,18 +77,18 @@ void ControlListener::renderMenu()
 				glVertex2f(0,0);
 				glColor4f(0,0,0,0);
 				glVertex2f(0,300);
-				glVertex2f(800,300);
+				glVertex2f(UI_W,300);
 				glColor4f(0,0,0,1);
-				glVertex2f(800,0);
+				glVertex2f(UI_W,0);
 			glEnd();
 			glBegin(GL_QUADS);
 				glColor4f(0,0,0,0);
 				glVertex2f(0,300);
 				glColor4f(0,0,0,1);
 				glVertex2f(0,600);
-				glVertex2f(800,600);
+				glVertex2f(UI_W,600);
 				glColor4f(0,0,0,0);
-				glVertex2f(800,300);
+				glVertex2f(UI_W,300);
 			glEnd();
 			glBegin(GL_QUADS);
 				glColor4f(0,0,0,1);
@@ -101,8 +102,8 @@ void ControlListener::renderMenu()
 				glColor4f(0,0,0,.5f);
 				glVertex2f(0,0);
 				glVertex2f(0,600);
-				glVertex2f(800,600);
-				glVertex2f(800,0);
+				glVertex2f(UI_W,600);
+				glVertex2f(UI_W,0);
 			glEnd();
 			for (int i=0;i<(int)m_controls.size();m_controls[i++]->render());
 			renderUnique();

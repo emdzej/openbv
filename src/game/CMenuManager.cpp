@@ -19,7 +19,12 @@
 #ifndef CONSOLE
 
 #include "CControl.h"
+#include "ui.h"
 #include "CMenuManager.h"
+#include "UITheme.h"
+#include "Scene.h"
+extern Scene* scene;
+extern unsigned int uiPageArt;
 #include "Helper.h"
 #include "Scene.h"
 
@@ -55,8 +60,8 @@ void CMenuManager::update(float delay, CControl * toUpdate)
 	mousePos = dkwGetCursorPos_main();
 
 	//--- On criss la mouse pos sur 800x600
-	mousePos[0] = (int)(((float)mousePos[0] / (float)res[0]) * 800.0f);
-	mousePos[1] = (int)(((float)mousePos[1] / (float)res[1]) * 600.0f);
+	mousePos[0] = (int)(((float)mousePos[0] / (float)res[0]) * (float)UI_W);
+	mousePos[1] = (int)(((float)mousePos[1] / (float)res[1]) * (float)UI_H);
 
 //	if (dialogs.empty() == false)
 //		return;
@@ -84,8 +89,8 @@ void CMenuManager::updateDialogs(float delay)
 	mousePos = dkwGetCursorPos_main();
 
 	//--- On criss la mouse pos sur 800x600
-	mousePos[0] = (int)(((float)mousePos[0] / (float)res[0]) * 800.0f);
-	mousePos[1] = (int)(((float)mousePos[1] / (float)res[1]) * 600.0f);
+	mousePos[0] = (int)(((float)mousePos[0] / (float)res[0]) * (float)UI_W);
+	mousePos[1] = (int)(((float)mousePos[1] / (float)res[1]) * (float)UI_H);
 
 	/*while (dialogs.empty() == false)
 	{
@@ -147,11 +152,35 @@ void CMenuManager::render(CControl * toRender)
 	if(gameVar.r_widescreen > 1) res[0] = static_cast<int>(res[1]*1.333f);
 
 #ifndef _DX_
-	dkglPushOrtho(800, 600);
+	dkglPushOrtho(UI_W, UI_H);
 		glPushAttrib(GL_ENABLE_BIT);
 			glDisable(GL_DEPTH_TEST);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			// openbv: the main menu sits on the game's menu art (it was black), over a game in progress
+			// on the game itself; a vignette either way so the flat panels read
+			if (toRender)
+			{
+				ui::vignette((float)UI_W, (float)UI_H);   // the in-game menus, over the game
+			}
+			else if (root)
+			{
+				if (!scene || (!scene->client && !scene->editor))
+				{
+					// the open page's own art (found while drawing the previous frame), else the default
+					static unsigned int fallback = dktCreateTextureFromFile("main/textures/Menu2Back.tga", DKT_FILTER_LINEAR);
+					unsigned int backdrop = uiPageArt ? uiPageArt : fallback;
+					CVector2i tsize = dktGetTextureSize(backdrop);
+					float aspect = (tsize[1] > 0) ? (float)tsize[0] / (float)tsize[1] : 4.0f / 3.0f;
+					// cover the screen, keeping the picture's shape
+					float bw = (float)UI_W, bh = bw / aspect;
+					if (bh < UI_H) { bh = (float)UI_H; bw = bh * aspect; }
+					glColor4f(.55f, .62f, .75f, 1);
+					renderTexturedQuadSmooth((int)((UI_W - bw) / 2), (int)((UI_H - bh) / 2), (int)bw, (int)bh, backdrop);
+				}
+				ui::vignette((float)UI_W, (float)UI_H);
+			}
+			if (!toRender) uiPageArt = 0;
 			if (toRender) toRender->render();
 			else if (root) root->render();
 		glPopAttrib();
@@ -159,7 +188,7 @@ void CMenuManager::render(CControl * toRender)
 #endif
 
 	//--- Head games logo bottom right // Temporarly disabled until 2.07
-	/*dkglPushOrtho(800, 600);
+	/*dkglPushOrtho(UI_W, UI_H);
 		glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 			glDisable(GL_DEPTH_TEST);
 			glEnable(GL_BLEND);
@@ -169,13 +198,13 @@ void CMenuManager::render(CControl * toRender)
 			glEnable(GL_TEXTURE_2D);
 			glBegin(GL_QUADS);
 				glTexCoord2i(0,1);
-				glVertex2i(800-128,600-128);
+				glVertex2i(UI_W-128,600-128);
 				glTexCoord2i(0,0);
-				glVertex2i(800-128,600-64);
+				glVertex2i(UI_W-128,600-64);
 				glTexCoord2i(1,0);
-				glVertex2i(800-64,600-64);
+				glVertex2i(UI_W-64,600-64);
 				glTexCoord2i(1,1);
-				glVertex2i(800-64,600-128);
+				glVertex2i(UI_W-64,600-128);
 			glEnd();
 		glPopAttrib();
 	dkglPopOrtho();*/
@@ -194,7 +223,7 @@ void CMenuManager::renderDialogs()
 		if(gameVar.r_widescreen > 1) res[0] = static_cast<int>(res[1]*1.333f);
 
 #ifndef _DX_
-		dkglPushOrtho(800, 600);
+		dkglPushOrtho(UI_W, UI_H);
 			glPushAttrib(GL_ENABLE_BIT);
 				glDisable(GL_DEPTH_TEST);
 				glEnable(GL_BLEND);
@@ -215,7 +244,8 @@ void CMenuManager::renderTooltip(CControl * control, const CVector2i& res)
 {
 #ifndef _DX_
 	//--- We render the tooltips text if the mouse if over that control
-	dkglPushOrtho((float)res[0], (float)res[1]);
+	// openbv: a themed card in UI units (it was drawn in screen pixels, tiny at high resolutions)
+	dkglPushOrtho(UI_W, UI_H);
 		glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 			glDisable(GL_DEPTH_TEST);
 			glEnable(GL_BLEND);
@@ -224,26 +254,22 @@ void CMenuManager::renderTooltip(CControl * control, const CVector2i& res)
 			{
 				if (!control->toolTips.isNull())
 				{
-					int w = (int)dkfGetStringWidth(25, control->toolTips.s) + 10;
-					int h = (int)dkfGetStringHeight(25, control->toolTips.s) + 10;
+					const float ts = 16;
+					int w = (int)dkfGetStringWidth(ts, control->toolTips.s) + 20;
+					int h = (int)dkfGetStringHeight(ts, control->toolTips.s) + 14;
 
 					CVector2i realMousePos = dkwGetCursorPos_main();
 
-					int x = realMousePos[0] + 16;
-					int y = realMousePos[1] + 16;
+					int x = (int)((float)realMousePos[0] / (float)res[0] * UI_W) + 16;
+					int y = (int)((float)realMousePos[1] / (float)res[1] * UI_H) + 18;
 
-					if (x + w > res[0]) x = res[0] - w;
-					if (y + h > res[1]) y = res[1] - h;
+					if (x + w > UI_W - 4) x = UI_W - 4 - w;
+					if (y + h > UI_H - 4) y = UI_H - 4 - h;
 
-					glColor3f(0, 0, 0);
-					renderMenuQuad(x-1, y-1, w+2, h+2);
-					glColor3f(.5f, .5f, .38f);
-					renderMenuQuad(x, y, w, h);
+					ui::rect((float)x, (float)y, (float)w, (float)h, ui::withAlpha(ui::panel, .96f), ui::fieldLine, 5);
 
-				//	enableShadow = false;
-					glColor3f(1,1,1);
-					printLeftText((float)x+5,(float)y+5,25,control->toolTips);
-				//	enableShadow = true;
+					glColor3f(ui::text.r, ui::text.g, ui::text.b);
+					printLeftText((float)x+10,(float)y+7,ts,control->toolTips);
 				}
 			}
 		glPopAttrib();

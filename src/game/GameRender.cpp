@@ -18,6 +18,7 @@
 
 #ifndef CONSOLE
 #include "Game.h"
+#include "ui.h"
 #include "Console.h"
 #include "Scene.h"
 
@@ -76,7 +77,7 @@ void Game::render()
 					if (thisPlayer->scopeMode == true)
 					{
 						CVector2i res = dkwGetResolution();
-						dkglSetProjection(80, .1f, 50, (float)res[1]*1.333f, (float)res[1]);
+						dkglSetProjection(80, .1f, 50, (float)res[0], (float)res[1]);
 #ifndef _DX_
 						gluLookAt(
 							thisPlayer->currentCF.position[0], 
@@ -700,7 +701,7 @@ void Game::render()
 //
 void Game::renderMiniMap()
 {
-	CVector2i res(800,600);// = dkwGetResolution();
+	CVector2i res(UI_W, UI_H);// = dkwGetResolution();
 
 #ifndef _DX_
 	dkglPushOrtho((float)res[0], (float)res[1]);

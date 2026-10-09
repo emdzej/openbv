@@ -18,6 +18,7 @@
 
 #ifndef CONSOLE
 #include "Game.h"
+#include "ui.h"
 #include "Helper.h"
 
 
@@ -208,7 +209,7 @@ void Game::renderSpectator(std::vector<Player*> & spectatorTeam, int & vPos)
 //
 void Game::renderStats()
 {
-	CVector2i res(800,600);// = dkwGetResolution();
+	CVector2i res(UI_W, UI_H);// = dkwGetResolution();
 #ifndef _DX_
 	dkglPushOrtho((float)res[0], (float)res[1]);
 		glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
@@ -219,20 +220,22 @@ void Game::renderStats()
 				glVertex2f(0,0);
 				glColor4f(0,0,0,0);
 				glVertex2f(0,300);
-				glVertex2f(800,300);
+				glVertex2f(UI_W,300);
 				glColor4f(0,0,0,1);
-				glVertex2f(800,0);
+				glVertex2f(UI_W,0);
 			glEnd();
 			glBegin(GL_QUADS);
 				glColor4f(0,0,0,0);
 				glVertex2f(0,300);
 				glColor4f(0,0,0,1);
 				glVertex2f(0,600);
-				glVertex2f(800,600);
+				glVertex2f(UI_W,600);
 				glColor4f(0,0,0,0);
-				glVertex2f(800,300);
+				glVertex2f(UI_W,300);
 			glEnd();
 			glEnable(GL_TEXTURE_2D);
+			// openbv: the table was laid out for 800 units: centred on the 16:9 screen
+			glTranslatef((float)(UI_W - 800) / 2, 0, 0);
 #endif
 
 			// On construit la blue team vector et la red team vector puis on tri

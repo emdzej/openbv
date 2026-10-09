@@ -23,8 +23,10 @@ game's `paint()`: update at a fixed 30 Hz (`dkcInit(30)`), then render. On gasm 
 loop, so `WinMain` is cut in two: the start-up runs from `gasm_init`, one `paint()` from each
 `gasm_frame` (60 Hz), the shutdown from `gasm_exit`. The `dkw` module is rewritten for gasm; it
 also turns gasm's raw keyboard into DirectInput scan codes and the pointer into DirectInput-style
-mouse deltas, which the unchanged `dki.cpp` reads. The game renders at its own resolution
-(`r_resolution`, 800x600 by default) and the frame is scaled into the window with its aspect kept.
+mouse deltas, which the unchanged `dki.cpp` reads. The game renders at the largest 16:9 size
+that fits the window, in its pixels; its UI is laid out in 1066x600 units (`src/game/ui.h`), where the
+original used 800x600. The menus are openbv's redesign (`src/game/UITheme.*`, the Rubik font built into
+the module), the gameplay the original's.
 
 **OpenGL 1.x** (`src/port/gl1/`). The game draws with fixed-function OpenGL: immediate mode,
 display lists, `glPushAttrib`, lighting, fog, GLU spheres (every babo is one). gasm offers OpenGL ES

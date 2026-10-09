@@ -6,7 +6,7 @@
 #   tools/headless-check.sh --expected                               -> prints the expected hash line
 set -euo pipefail
 FRAMES=600
-EXPECTED="video_fnv32=04ab3993 audio_fnv32=b56bc7ab audio_frames=220500"
+EXPECTED="video_fnv32=1be66dd1 audio_fnv32=b56bc7ab audio_frames=220500"
 if [ "${1:-}" = --expected ]; then echo "$EXPECTED"; exit 0; fi
 RUN=${1:?usage: headless-check.sh <gasm-run> <openbv.wasm> <content dir>}; WASM=${2:?}; DATA=${3:?}
 line=$("$RUN" "$WASM" --asset-dir "$DATA" --headless "$FRAMES" --mute 2>&1 | grep -E '^video_fnv32=' || true)

@@ -15,8 +15,8 @@ the GPL source release, as the bundles ship it) and keeps the files in the brows
 later visit starts without downloading them again. Press **Play** (the browser wants a click before it
 plays sound), then click the picture so it gets the keyboard.
 
-The game runs on the page's main thread at its own 60 frames a second, with the 800x600 picture scaled
-to the window and letterboxed, as on the desktop. **Fullscreen** fills the screen with it.
+The game runs on the page's main thread at its own 60 frames a second, drawn at the
+largest 16:9 size that fits the window, as on the desktop. **Fullscreen** fills the screen with it.
 
 Your settings (`bv2.cfg`: key bindings, player name, everything in Options) and the game's `bv2.db`
 changes are kept in the browser's IndexedDB, under the site, separately from the desktop's.

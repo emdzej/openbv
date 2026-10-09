@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "CNews.h"
+#include "ui.h"
 
 CNews::CNews(CControl * in_parent, CControl * in_alignTo)
 {
@@ -28,15 +29,15 @@ CNews::CNews(CControl * in_parent, CControl * in_alignTo)
 	parent = in_parent;
 
 	//--- Da big frame
-	instance = new CControl(parent, CVector2i(0,0), CVector2i(736, 506), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
+	instance = new CControl(parent, CVector2i(0,0), CVector2i(UI_PAGE_W, UI_PAGE_H), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
 	//instance->texture = dktCreateTextureFromFile("main/textures/Menu3Back.tga", DKT_FILTER_LINEAR);
 	//instance->borderColor.set(1,.5f,.25f);
 
 	btn_refresh = new CControl(instance, CVector2i(10,10),CVector2i(120,25),"Refresh",this,"BUTTON");
 	btn_refresh->toolTips = "Refresh the news";
 
-	lst_news = new CControl(instance, CVector2i(0,0), CVector2i(716,460), "", this, "LISTBOX", btn_refresh, CONTROL_SNAP_BOTTOM, 5);
-	lst_news->texture = dktCreateTextureFromFile("main/textures/Menu2Back.tga", DKT_FILTER_LINEAR);
+	lst_news = new CControl(instance, CVector2i(0,0), CVector2i(UI_PAGE_INNER_W, UI_PAGE_H - 46), "", this, "LISTBOX", btn_refresh, CONTROL_SNAP_BOTTOM, 5);
+	// openbv: Menu2Back.tga is now the whole menu's backdrop (CMenuManager::render)
 
 	instance->backColor.set(0,.3f,.7f);
 	instance->imgColor = instance->backColor;

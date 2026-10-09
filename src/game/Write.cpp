@@ -18,6 +18,7 @@
 
 #ifndef CONSOLE
 #include "Write.h"
+#include "ui.h"
 #include "Menu.h"
 
 
@@ -77,8 +78,8 @@ void Write::update(float delay)
 	CVector2i res = dkwGetResolution();
 
 	// Il faut maintenant ajuster la mousePos dans notre 800x600
-	mousePos[0] = (int)((float)mousePos[0] / (float)res[0] * 800.0f);
-	mousePos[1] = (int)((float)mousePos[1] / (float)res[1] * 600.0f);
+	mousePos[0] = (int)((float)mousePos[0] / (float)res[0] * (float)UI_W);
+	mousePos[1] = (int)((float)mousePos[1] / (float)res[1] * (float)UI_H);
 
 	if (isActivated())
 	{

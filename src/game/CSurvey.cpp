@@ -18,6 +18,7 @@
 
 #ifndef CONSOLE
 #include "CSurvey.h"
+#include "ui.h"
 #include "CControl.h"
 #include "cMSstruct.h"
 #include "CMaster.h"
@@ -36,11 +37,11 @@ CSurvey::CSurvey(CControl * in_parent)
 	parent = in_parent;
 
 	//--- Main frame to hold the survey
-	pnl_main = new CControl(parent, CVector2i(0,0), CVector2i(800, 600), "", this, "SUPER_PANEL");
+	pnl_main = new CControl(parent, CVector2i(0,0), CVector2i(UI_W, UI_H), "", this, "SUPER_PANEL");
 		pnl_main->borderColor.set(1,.5f,.25f);
 		pnl_main->texture = dktCreateTextureFromFile("main/textures/Smoke2.tga", DKT_FILTER_NEAREST);
 
-	pnl_sending = new CControl(parent, CVector2i(0,0), CVector2i(800, 600), "", this, "SUPER_PANEL");
+	pnl_sending = new CControl(parent, CVector2i(0,0), CVector2i(UI_W, UI_H), "", this, "SUPER_PANEL");
 		pnl_sending->borderColor.set(1,.5f,.25f);
 		pnl_sending->texture = dktCreateTextureFromFile("main/textures/Smoke2.tga", DKT_FILTER_NEAREST);
 

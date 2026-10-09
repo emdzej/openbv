@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "CBrowser.h"
+#include "ui.h"
 #include "GameVar.h"
 #include "Console.h"
 #include "CLobby.h"
@@ -62,7 +63,7 @@ CBrowser::CBrowser(CControl * in_parent, CControl * in_alignTo)
 	parent = in_parent;
 
 	//--- Da big frame
-	instance = new CControl(parent, CVector2i(0,0), CVector2i(736, 506), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
+	instance = new CControl(parent, CVector2i(0,0), CVector2i(UI_PAGE_W, UI_PAGE_H), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
 	instance->borderColor.set(1,.5f,.25f);
 
 	//--- Labels and controls
@@ -79,11 +80,12 @@ CBrowser::CBrowser(CControl * in_parent, CControl * in_alignTo)
 
 	btn_join = new CControl(instance, CVector2i(32,32),CVector2i(120,25),"Join",this,"BUTTON", txt_pw, CONTROL_SNAP_RIGHT, 15);
 	btn_join->toolTips = "Click to join the selected game/ip !";
+	btn_join->primary = true;   // openbv
 
 	btn_refresh = new CControl(instance, CVector2i(32,32),CVector2i(120,25),"Refresh",this,"BUTTON", btn_join, CONTROL_SNAP_RIGHT, 15);
 	btn_refresh->toolTips = "Refresh the games";
 
-	lst_browseList = new CControl(instance, CVector2i(0,0), CVector2i(716,460), "", this, "LISTBOX", label1, CONTROL_SNAP_BOTTOM, 5);
+	lst_browseList = new CControl(instance, CVector2i(0,0), CVector2i(UI_PAGE_INNER_W, UI_PAGE_H - 46), "", this, "LISTBOX", label1, CONTROL_SNAP_BOTTOM, 5);
 	lst_browseList->texture = dktCreateTextureFromFile("main/textures/Menu2Back.tga", DKT_FILTER_LINEAR);
 
 	instance->backColor.set(0,.3f,.7f);

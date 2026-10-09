@@ -45,7 +45,7 @@ if(OPENBV_PLATFORM STREQUAL "gasm")
   target_compile_definitions(bv_game PRIVATE ${BV_DEFINES})
   target_compile_options(bv_game PRIVATE -O2 -w $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>)
 
-  gasm_add_game(openbv src/port/fs_gasm.c ${GL1_SRC} ${FMOD_SRC} ${GASM_VFILE_SOURCE}
+  gasm_add_game(openbv src/port/fs_gasm.c src/port/embedded_assets.c ${GL1_SRC} ${FMOD_SRC} ${GASM_VFILE_SOURCE}
     $<TARGET_OBJECTS:bv_engine> $<TARGET_OBJECTS:bv_game>)
   target_include_directories(openbv PRIVATE ${PORT_INCLUDES})
   target_compile_definitions(openbv PRIVATE ${BV_DEFINES})

@@ -158,6 +158,12 @@ public:
 
 	std::vector<CControl *> m_radios;
 
+	// openbv (UITheme.h): a primary action (accent fill), a tab of the main bar (the disabled one is the
+	// open page), and how far the hover highlight has faded in (0..1).
+	bool primary;
+	bool tab;
+	float hoverFade;
+
 public:
 	CControl();
 	CControl(

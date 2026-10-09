@@ -10,7 +10,11 @@ original GPL-3.0 C++ source ([Daivuk/BaboViolent2](https://github.com/Daivuk/Bab
 `7171c84`), compiled to `openbv.wasm`, with everything below the game replaced by gasm backends. Sibling
 projects with the same conventions: `../openrf`, `../opengta`, `../openballance`.
 
-**Fidelity is the product.** Same rules, same feel, same assets. The game code stays the original's; change
+**Fidelity is the product — for gameplay.** Same rules, same feel, same assets. Presentation is the
+exception, by the user's decision (2026-10-09): openbv is 16:9 throughout (`src/game/ui.h`: the UI canvas is
+1066x600 units, the render resolution follows the window, default 1920x1080), and the menus are redesigned
+(`src/game/UITheme.*`: flat panels, one accent colour, the Rubik font baked into the game's font format by
+`tools/fonts/`, built into the module by `src/port/embedded_assets.c`); the HUD is next. The game code stays the original's; change
 it only where the platform forces it, and keep the change small, marked and explained. Reproduce the
 original's behaviour, quirks included. The reference is the Windows build of 2.11 (the source's `ProRelease`
 configuration: `_PRO_`, `_MD5CODESEG_`); where the source has Windows and Linux branches that differ, the
@@ -31,6 +35,8 @@ browser player, gamepad buttons, the Prozac 2.1.3 data (renders without text: it
 | `src/port/` | What replaces the platform: `dkw_gasm.cpp` (gasm entry points, window, loop, keyboard, mouse, joystick), `babonet_gasm.cpp` (baboNet over gasm:net WebSockets + in-process server), `fs_gasm.c` (fopen/opendir/stat over assets and storage, by `--wrap`), `sqlite_shim.cpp` (bv2.db read from the file format), `curl_shim.cpp`, `win_find.cpp` (FindFirstFile in NTFS order) |
 | `src/port/gl1/` | OpenGL 1.x fixed function on gasm:gl (GLES 3); see its README |
 | `src/port/fmod/` | FMOD 3 (FSOUND) on a software mixer, stb_vorbis; see its README |
+| `src/game/UITheme.*`, `src/game/ui.h` | The redesigned menus' look and the 16:9 canvas (openbv's, not upstream's) |
+| `assets/fonts/`, `tools/fonts/` | Our UI font (Rubik, OFL: `babo.tga` + licence), its baker (`bake_font.py`, Pillow in `.deps/py`) and `embed_assets.py`, which writes `src/port/embedded_assets.c` (the file layer serves it ahead of the game's data, so every runner gets it) |
 | `src/port/include/` | Stand-ins for system headers (`LinuxHeader.h`, `dik.h`, `sqlite3.h`, `curl/curl.h`, `openssl/md5.h`, `win_find.h`), `openbv_link.h`, `engine_names.h` |
 | `play` | Build and run locally (`./play --help`) |
 | `docs/` | VitePress site, openbv.emdzej.pl |
@@ -61,11 +67,11 @@ browser player, gamepad buttons, the Prozac 2.1.3 data (renders without text: it
 ```
 
 Headless reference (vanilla data, no input): frame 600 is the main menu, hash line
-`video_fnv32=04ab3993 audio_fnv32=b56bc7ab`, the same on `node ../gasm/runners/web/headless.mjs`. A change
+`video_fnv32=1be66dd1 audio_fnv32=b56bc7ab`, the same on `node ../gasm/runners/web/headless.mjs`. A change
 that alters it must be explained by the change.
 
-Scripted play (1280x720 headless drawable, the 800x600 game letterboxed at x 160..1120): Host tab
-`610:PTR(630,54),620:PTR(630,54,L),625:PTR(630,54)`, Start `700:PTR(266,101),720:PTR(266,101,L),740:PTR(266,101)`
+Scripted play (1280x720 headless drawable; the game fills it at 16:9, its UI in 1066x600 units, src/game/ui.h): Host tab
+`610:PTR(494,44),620:PTR(494,44,L),625:PTR(494,44)`, Start `700:PTR(116,95),720:PTR(116,95,L),740:PTR(116,95)`
 (wait for the page to settle), weapon `1000:PTR(579,174),1010:PTR(579,174,L),1020:PTR(579,174)`, Auto assign
 team `1060:PTR(309,174),...`, spawn by shooting `1300:PTR(800,300,L)`. The console is the backquote key.
 

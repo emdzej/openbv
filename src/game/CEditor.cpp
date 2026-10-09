@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "CEditor.h"
+#include "ui.h"
 #include "Console.h"
 #include "GameVar.h"
 
@@ -30,7 +31,7 @@ CEditor::CEditor(CControl * in_parent, CControl * in_alignTo)
 	parent = in_parent;
 
 	//--- Da big frame
-	instance = new CControl(parent, CVector2i(0,0), CVector2i(736, 506), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
+	instance = new CControl(parent, CVector2i(0,0), CVector2i(UI_PAGE_W, UI_PAGE_H), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
 	instance->texture = dktCreateTextureFromFile("main/textures/Menu2Back.tga", DKT_FILTER_LINEAR);
 	instance->borderColor.set(1,.5f,.25f);
 

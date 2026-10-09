@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "CUserLogin.h"
+#include "ui.h"
 #include "Helper.h"
 #include "GameVar.h"
 #include "Console.h"
@@ -388,10 +389,10 @@ void CUserLogin::Paint(CControl * control)
 					}
 
 					glViewport(
-						(GLint)((((float)control->Rect[0]/800.0f) * (float)res[0]) + offset), 
-						res[1] - (int)(((float)(control->Rect[1])/600.0f) * (float)res[1]) - (int)(((float)control->Rect[3]/600.0f) * (float)res[1] + 1),
-						(int)(((float)control->Rect[2]/800.0f) * (float)res[0]), 
-						(int)(((float)control->Rect[3]/600.0f) * (float)res[1] + 1));
+						(GLint)((((float)control->Rect[0]/ (float)UI_W) * (float)res[0]) + offset), 
+						res[1] - (int)(((float)(control->Rect[1])/ (float)UI_H) * (float)res[1]) - (int)(((float)control->Rect[3]/ (float)UI_H) * (float)res[1] + 1),
+						(int)(((float)control->Rect[2]/ (float)UI_W) * (float)res[0]), 
+						(int)(((float)control->Rect[3]/ (float)UI_H) * (float)res[1] + 1));
 
 					dkglSetProjection(70, 1, 1000, (float)control->size[0], (float)control->size[1]);
 

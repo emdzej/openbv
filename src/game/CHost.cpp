@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "CHost.h"
+#include "ui.h"
 #ifdef WIN32
 #include <direct.h>
 #endif
@@ -203,13 +204,14 @@ CHost::CHost(CControl * in_parent, CControl * in_alignTo)
 	parent = in_parent;
 
 	//--- Da big frame
-	instance = new CControl(parent, CVector2i(0,0), CVector2i(736, 506), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
+	instance = new CControl(parent, CVector2i(0,0), CVector2i(UI_PAGE_W, UI_PAGE_H), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
 	instance->texture = dktCreateTextureFromFile("main/textures/Menu3Back.tga", DKT_FILTER_LINEAR);
 	instance->borderColor.set(1,.5f,.25f);
 
 	//--- Labels and controls
 	btn_start = new CControl(instance, CVector2i(20,10), CVector2i(75, 25), "Start", this, "BUTTON");
 	btn_start->toolTips = "Start the game.\nIf you choose no map, daivuk will be the default.";
+	btn_start->primary = true;   // openbv
 
 	//--- GENERAL GAME OPTIONS
 	CControl * separator = new CControl(instance, CVector2i(10,20), CVector2i(200,25),"General game options", this, "SEPARATOR",btn_start, CONTROL_SNAP_BOTTOM, 15);
@@ -451,7 +453,7 @@ CHost::CHost(CControl * in_parent, CControl * in_alignTo)
 				mapImg->textureCorner = g_sizeReal;
 				mapImg->useTextureCorner = true;
 
-				if (tileX + mapImg->size[0] > 700)
+				if (tileX + mapImg->size[0] > UI_PAGE_W - 36)
 				{
 					tileX = label1->localPos[0] + 15;
 					tileY += topH;

@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "CProfile.h"
+#include "ui.h"
 
 CProfile::CProfile(CControl * in_parent, CControl * in_alignTo)
 {
@@ -28,7 +29,7 @@ CProfile::CProfile(CControl * in_parent, CControl * in_alignTo)
 	parent = in_parent;
 
 	//--- Da big frame
-	instance = new CControl(parent, CVector2i(0,0), CVector2i(736, 506), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
+	instance = new CControl(parent, CVector2i(0,0), CVector2i(UI_PAGE_W, UI_PAGE_H), "", this, "FRAME", in_alignTo, CONTROL_SNAP_BOTTOM);
 	//instance->texture = dktCreateTextureFromFile("main/textures/Menu3Back.tga", DKT_FILTER_LINEAR);
 	//instance->borderColor.set(1,.5f,.25f);
 
@@ -46,6 +47,8 @@ CProfile::CProfile(CControl * in_parent, CControl * in_alignTo)
 	btn_registerClan->toolTips = "Register clan and invite players.";
 	btn_clans = new CControl(instance, CVector2i(10,0),CVector2i(90,25),"Clans",this,"BUTTON", btn_registerClan, CONTROL_SNAP_RIGHT);
 	btn_clans->toolTips = "View list of registered clans.";
+	// openbv: the sub-pages' buttons are tabs, like the main bar's
+	btn_baboProfile->tab = btn_account->tab = btn_friends->tab = btn_players->tab = btn_stats->tab = btn_registerClan->tab = btn_clans->tab = true;
 
 	userLogin = new CUserLogin(instance, btn_baboProfile);
 	friends = new CFriends(instance, btn_baboProfile);

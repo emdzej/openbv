@@ -36,11 +36,11 @@ if (!existsSync(WASM) || !existsSync(join(DATA, 'files.json'))) {
 if (!existsSync(CHROME)) { console.error(`no Chrome at ${CHROME} (CHROME=<binary>)`); process.exit(1); }
 
 // The main menu, and a hosted game played to the first shots (AGENTS.md's script).
-const PLAY = '610:PTR(630,54),620:PTR(630,54,L),625:PTR(630,54),700:PTR(266,101),720:PTR(266,101,L),740:PTR(266,101),' +
+const PLAY = '610:PTR(494,44),620:PTR(494,44,L),625:PTR(494,44),700:PTR(116,95),720:PTR(116,95,L),740:PTR(116,95),' +
   '1000:PTR(579,174),1010:PTR(579,174,L),1020:PTR(579,174),1060:PTR(309,174),1070:PTR(309,174,L),1080:PTR(309,174),' +
   '1300:PTR(800,300),1310:PTR(800,300,L),1320:PTR(800,300),1450-1520:KEY(KeyW),1600-1640:PTR(900,250,L),1641:PTR(900,250)';
 const CASES = [
-  { name: 'menu', frames: 600, input: '', expect: 'video_fnv32=04ab3993 audio_fnv32=b56bc7ab' },
+  { name: 'menu', frames: 600, input: '', expect: 'video_fnv32=1be66dd1 audio_fnv32=b56bc7ab' },
   { name: 'host and play', frames: 1650, input: PLAY },
 ];
 

@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 
 #include "Scene.h"
+#include "ui.h"
 
 // Creating menu
 void Scene::createMenu()
@@ -26,7 +27,7 @@ void Scene::createMenu()
 	//--- Overall control
 	menuManager.root = new CControl();
 	menuManager.root->font = font;
-	menuManager.root->size.set(800,600);
+	menuManager.root->size.set(UI_W, UI_H);
 	menuManager.root->backColor.set(.3f,.5f,.8f);
 	menuManager.root->foreColor.set(1,1,1);
 	menuManager.root->textShadow = true;
@@ -47,7 +48,7 @@ void Scene::createSurvey()
 	//--- Overall control
 	menuManager.root = new CControl();
 	menuManager.root->font = font;
-	menuManager.root->size.set(800,600);
+	menuManager.root->size.set(UI_W, UI_H);
 	menuManager.root->backColor.set(.3f,.5f,.8f);
 	menuManager.root->foreColor.set(1,1,1);
 	menuManager.root->textShadow = true;

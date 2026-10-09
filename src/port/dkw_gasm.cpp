@@ -20,6 +20,7 @@
 #include <wasi/api.h>
 
 #include "gl1.h"
+#include <GL/gl.h>
 
 namespace
 {
@@ -168,6 +169,23 @@ namespace
 	}
 }
 
+// openbv: the game renders at the largest 16:9 size that fits the window, in its pixels (the original
+// rendered at r_resolution, the window's size). A new size takes effect at the start of a frame, with
+// the viewport the game would have had from a window of that size.
+static void fitResolution()
+{
+	int w = (int)gasm_gl_width(), h = (int)gasm_gl_height();
+	if (w <= 0 || h <= 0) return;
+	int fw = w, fh = w * 9 / 16;
+	if (fh > h) { fh = h; fw = h * 16 / 9; }
+	if (fw < 640) { fw = 640; fh = 360; }
+	if (fw == resW && fh == resH) return;
+	resW = fw;
+	resH = fh;
+	gl1_begin_frame(resW, resH);
+	glViewport(0, 0, resW, resH);
+}
+
 // --- the dkw API
 
 int dkwInit(int width, int height, int colorDepth, char *title, CMainLoopInterface *mMainLoopObject, bool fullScreen, int refreshRate)
@@ -280,6 +298,7 @@ GASM_EXPORT("gasm_init") int32_t openbv_gasm_init(void)
 GASM_EXPORT("gasm_frame") void openbv_gasm_frame(void)
 {
 	if (!running) return;
+	fitResolution();
 	pollInput();
 	gl1_begin_frame(resW, resH);
 	bool alive = bv2_gasm_frame() && !quitRequested;
