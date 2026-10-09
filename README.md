@@ -1,6 +1,7 @@
 # openbv — Babo Violent 2, running again
 
 **Docs and screenshots: [openbv.emdzej.pl](https://openbv.emdzej.pl)** ·
+[Play in the browser](https://openbv.emdzej.pl/play/) ·
 [Download](https://github.com/emdzej/openbv/releases)
 
 [![Built for gasm](https://gasm.emdzej.pl/badge/built-for-gasm-flat.svg)](https://gasm.emdzej.pl)
@@ -11,8 +12,8 @@ community kept it alive for years (the Prozac mod among others), but the game is
 from another era: DirectInput, OpenGL 1.x, FMOD 3, raw sockets. Try running that on a Mac today.
 
 So I ported it. openbv is the original 2.11 source, compiled to WebAssembly for the
-[gasm](https://gasm.emdzej.pl) game runtime, which runs it natively on macOS, Linux and Windows (and,
-soon, in the browser). The game code is the original, almost untouched: what changed is everything
+[gasm](https://gasm.emdzej.pl) game runtime, which runs it natively on macOS, Linux and Windows, and in the
+browser. The game code is the original, almost untouched: what changed is everything
 underneath it. The rules, the maps, the weapons and the art are Babo Violent 2's own — the point is to
 play the same game, not a remake of it.
 

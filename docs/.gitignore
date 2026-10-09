@@ -5,6 +5,7 @@ node_modules/
 # game's data (copy-content.sh); the player itself (public/play/index.html, play.js, play.css) is ours
 public/play/gasm-host.js
 public/play/gasm-present.js
+public/play/input-script.mjs
 public/play/lib/
 public/play/LICENSE
 public/play/VERSION

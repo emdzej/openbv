@@ -14,7 +14,10 @@ openbv is early. The game runs and plays locally; online play doesn't exist yet.
 - Sound: effects (2D and 3D) and music are mixed; in a window, gun sounds have been reported
   missing, which is being looked into.
 - Keyboard and mouse as DirectInput read them; the first gamepad's sticks and triggers.
-- Determinism: identical video and audio hashes on gasm's native and Node runners.
+- The browser: [/play/](/play/) runs the same module on WebGL 2, with the data from the site (cached
+  after the first visit) and the settings in the browser's storage.
+- Determinism: identical video and audio hashes on gasm's native and Node runners and in the
+  browser player (`tools/web-play-test.mjs`: the menu and a hosted game, played).
 
 ## Doesn't work yet
 
@@ -24,7 +27,6 @@ openbv is early. The game runs and plays locally; online play doesn't exist yet.
   will take its place.
 - **LAN search, server pings, remote admin.** They used baboNet's peer-to-peer UDP, which has no
   transport on gasm.
-- **The browser.** gasm runs there; the game needs a way to load its data.
 - **Gamepad buttons.** Only the sticks and triggers are mapped.
 - **The Prozac mod's data.** Its menus draw without text: its font is a different, larger texture,
   which the Prozac build handled differently. Prozac support is planned as an option next to the

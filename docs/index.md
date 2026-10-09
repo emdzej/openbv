@@ -7,6 +7,10 @@ hero:
   tagline: The original game, built from its GPL source, running on macOS, Linux and Windows from one WebAssembly file. Same rules, same maps, same babos.
   actions:
     - theme: brand
+      text: Play in the browser
+      link: /play/
+      target: _self
+    - theme: alt
       text: Download
       link: https://github.com/emdzej/openbv/releases
     - theme: alt
@@ -20,7 +24,7 @@ features:
   - title: The original game
     details: Babo Violent 2 2.11, the last version RndLabs shipped, ported from the source Daivuk released under the GPL. The game code is the original code, not a remake of it.
   - title: Runs where gasm runs
-    details: One openbv.wasm, on gasm's native runner for macOS, Linux and Windows. The browser is next; gasm already runs there, the game needs a way to get its data.
+    details: One openbv.wasm, on gasm's native runner for macOS, Linux and Windows, and in the browser on gasm's web host, the same module with the same frames.
   - title: Online play (in progress)
     details: A server written in Go that hosts many game sessions at once, with an admin page for players, bans, map rotation and settings. Not there yet; hosting a game on your own machine works today.
   - title: Faithful

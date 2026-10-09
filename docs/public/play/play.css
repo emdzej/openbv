@@ -1,0 +1,48 @@
+/* openbv's browser player: the site's colours (docs/.vitepress/theme/babo.css), the menu's black. */
+:root {
+  --panel: #0a5fd6;
+  --frame: #063a8c;
+  --button-top: #5b93e2;
+  --button-bottom: #1d4fa6;
+  --select: #c8781c;
+  --bg: #08090c;
+  --text: #e6ecf7;
+  --text-2: #9aa8c0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: #8fb6f5; }
+code { font-size: 0.92em; }
+
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 20px;
+  border-bottom: 1px solid #1a2233; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 17px; }
+.bar nav { display: flex; gap: 18px; }
+.bar nav a { color: var(--text-2); text-decoration: none; }
+.bar nav a:hover, .bar nav a[aria-current] { color: var(--text); }
+
+main { max-width: 1180px; margin: 0 auto; padding: 16px 20px 40px; }
+
+/* the picture: 4:3 (the game's 800x600), as large as the window allows */
+#stage { position: relative; width: min(100%, calc((100vh - 190px) * 4 / 3)); aspect-ratio: 4 / 3; margin: 0 auto;
+  background: #000; border: 1px solid var(--frame); }
+#stage:fullscreen { width: 100vw; height: 100vh; border: 0; aspect-ratio: auto; }
+#screen { display: block; width: 100%; height: 100%; outline: none; }
+#cover { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 24px; text-align: center; background: radial-gradient(ellipse at center, #0b2c6a 0%, #04070f 75%); }
+#cover h1 { margin: 0 0 4px; font-size: 30px; }
+#cover[hidden] { display: none; }
+#cover p { margin: 0; max-width: 560px; color: var(--text-2); }
+
+button { font: inherit; color: var(--text); cursor: pointer; border: 1px solid #0d2d66; border-radius: 3px; padding: 6px 14px;
+  background: linear-gradient(var(--button-top), var(--button-bottom)); }
+button:hover:not(:disabled) { filter: brightness(1.12); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary { font-size: 17px; padding: 9px 26px; margin: 12px 0 4px; }
+
+.under { max-width: 900px; margin: 12px auto 0; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.small { font-size: 13px; color: var(--text-2); }
+#status.error, #progress.error { color: #ff8a80; }

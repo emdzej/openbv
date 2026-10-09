@@ -4,6 +4,10 @@ openbv is one WebAssembly module, `openbv.wasm`, that runs on gasm's native runn
 needs the game's data (maps, models, textures, sounds): the files of the original's `main/` folder
 and its `bv2.db`.
 
+## In the browser
+
+[Play](/play/) runs it here, nothing to install: see [Playing in the browser](./browser).
+
 ## From a release
 
 The [releases](https://github.com/emdzej/openbv/releases) have bundles for macOS (universal), Linux

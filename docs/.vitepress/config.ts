@@ -7,7 +7,8 @@ export default defineConfig({
   lastUpdated: true,
   srcExclude: ["README.md", "AGENTS.md"],
   sitemap: { hostname: "https://openbv.emdzej.pl" },
-  // /play/ holds gasm's browser runtime and the background's module (scripts/vendor-web.sh, build-bg.sh).
+  // /play/ is a static page of its own (public/play/: the browser player), with gasm's browser runtime,
+  // the modules and the game's data copied in (scripts/vendor-web.sh, build-bg.sh, copy-wasm.sh, copy-content.sh).
   ignoreDeadLinks: [/^\/play\//],
 
   head: [
@@ -24,6 +25,7 @@ export default defineConfig({
     logo: "/favicon.svg",
 
     nav: [
+      { text: "Play", link: "/play/", target: "_self" },
       { text: "Guide", link: "/guide/", activeMatch: "/guide/" },
       { text: "Internals", link: "/internals/", activeMatch: "/internals/" },
       { text: "Status", link: "/status" },
@@ -36,6 +38,7 @@ export default defineConfig({
           text: "Guide",
           items: [
             { text: "Getting started", link: "/guide/" },
+            { text: "Playing in the browser", link: "/guide/browser" },
             { text: "Controls", link: "/guide/controls" },
             { text: "Hosting a game", link: "/guide/hosting" },
             { text: "Building from source", link: "/guide/build" },

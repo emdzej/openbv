@@ -3,15 +3,20 @@ name: Pages
 # Builds and deploys the VitePress site (docs/) to GitHub Pages, at https://openbv.emdzej.pl/ (the custom
 # domain's CNAME ships in docs/public/CNAME). The home page's background is a small gasm game
 # (tools/site-bg, two babos dueling), built by docs/scripts/build-bg.sh and run by @emdzej/gasm-host, whose
-# copy under /play/ docs/scripts/vendor-web.sh makes from the pinned npm package.
+# copy under /play/ docs/scripts/vendor-web.sh makes from the pinned npm package. /play/ is the browser
+# player: openbv.wasm built here with the released SDK (docs/scripts/copy-wasm.sh) and the game's content
+# (tools/fetch-content.sh, from the GPL source release; docs/scripts/copy-content.sh).
 
 on:
   push:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
       - 'tools/site-bg/**'
       - 'tools/fetch-gasm-sdk.sh'
+      - 'tools/fetch-content.sh'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -38,6 +43,19 @@ jobs:
       - name: build the background game
         run: docs/scripts/build-bg.sh
 
+      - name: build openbv.wasm (the browser player's module)
+        run: |
+          cmake -S . -B build-gasm -DOPENBV_PLATFORM=gasm -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=.deps/gasm-c-sdk/cmake/gasm-toolchain.cmake -DWASI_SDK_PREFIX="$PWD/.deps/wasi-sdk"
+          cmake --build build-gasm -j
+          docs/scripts/copy-wasm.sh
+
+      - name: content cache
+        uses: actions/cache@v6
+        with:
+          path: .deps/content
+          key: content-${{ hashFiles('tools/fetch-content.sh') }}
+
       - uses: pnpm/action-setup@v6
         with:
           version: 10
@@ -56,8 +74,12 @@ jobs:
         working-directory: docs
         run: |
           scripts/vendor-web.sh
+          scripts/copy-content.sh
           pnpm build
           test -f .vitepress/dist/play/build/babos.wasm
+          test -f .vitepress/dist/play/build/openbv.wasm
+          test -f .vitepress/dist/play/data/files.json
+          test -f .vitepress/dist/play/index.html
           test -f .vitepress/dist/CNAME
 
       - uses: actions/configure-pages@v6

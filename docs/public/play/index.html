@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Play | openbv</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Play Babo Violent 2 in your browser: openbv, the original game from its GPL source, on the gasm runtime.">
+<meta name="theme-color" content="#0a5fd6">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="play.css">
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="/"><img src="/favicon.svg" alt="" width="26" height="26"> openbv</a>
+  <nav>
+    <a href="/guide/">Guide</a>
+    <a href="/guide/controls">Controls</a>
+    <a href="/play/" aria-current="page">Play</a>
+    <a href="https://github.com/emdzej/openbv">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <div id="stage">
+    <canvas id="screen" tabindex="0" aria-label="Babo Violent 2"></canvas>
+    <div id="cover">
+      <h1>Babo Violent 2</h1>
+      <p>The original 2.11, from its GPL source, running on <a href="https://gasm.emdzej.pl">gasm</a>: the same
+        <code>openbv.wasm</code> as on the desktop.</p>
+      <button id="start" class="primary" disabled>Loading...</button>
+      <p class="small" id="progress"></p>
+    </div>
+  </div>
+
+  <div class="under">
+    <div class="row">
+      <button id="fullscreen" disabled>Fullscreen</button>
+      <button id="stop" disabled>Stop</button>
+      <span id="status" class="small"></span>
+    </div>
+    <p class="small"><strong>Controls:</strong> move with W A S D, aim with the mouse, shoot with the left button,
+      grenades with the right, Tab for the scores, the backquote key for the console, Esc for the game's menu. Click
+      the picture first so it gets the keyboard. Hold Esc for a second to stop the game.
+      <a href="/guide/controls">All controls</a>.</p>
+    <p class="small">To play: Host, then Start; pick a weapon, "Auto assign team", and shoot to spawn. Online games
+      need the openbv server, which isn't there yet. Your settings stay in this browser.
+      The game's art and sounds are RndLabs', from the source release.</p>
+  </div>
+</main>
+
+<script type="module" src="play.js"></script>
+</body>
+</html>
