@@ -98,6 +98,24 @@ func (v *Var) Set(params string) bool {
 	return true
 }
 
+// Strict says whether params is a well-formed value for the variable (a number for numbers, true
+// or false for bools), for settings given to a server; the console's Set takes what the engine took
+// (sscanf: "banana" is 0).
+func (v *Var) Strict(params string) bool {
+	tok := strings.Trim(strings.TrimSpace(params), `"`)
+	switch v.Kind {
+	case Bool:
+		return strings.EqualFold(tok, "true") || strings.EqualFold(tok, "false")
+	case Int:
+		_, err := strconv.ParseInt(tok, 0, 32)
+		return err == nil
+	case Float:
+		_, err := strconv.ParseFloat(tok, 32)
+		return err == nil
+	}
+	return true
+}
+
 // Reset puts the default back.
 func (v *Var) Reset() { v.Set(v.def) }
 

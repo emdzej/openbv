@@ -1,6 +1,6 @@
 # Status
 
-openbv is early. The game runs and plays locally; online play doesn't exist yet.
+openbv is early. The game runs and plays locally and online, on the openbv server.
 
 ## Works
 
@@ -16,15 +16,16 @@ openbv is early. The game runs and plays locally; online play doesn't exist yet.
 - Keyboard and mouse as DirectInput read them; the first gamepad's sticks and triggers.
 - The browser: [/play/](/play/) runs the same module on WebGL 2, with the data from the site (cached
   after the first visit) and the settings in the browser's storage.
+- Online play on [the openbv server](/guide/server) (Go): several sessions per process, every game
+  type, the original's rules ported and checked against its code, votes, in-game admins, bans, an admin
+  page, and the Game Browser listing the server's games (`--master=<host>:<port>`).
 - Determinism: identical video and audio hashes on gasm's native and Node runners and in the
   browser player (`tools/web-play-test.mjs`: the menu and a hosted game, played).
 
 ## Doesn't work yet
 
-- **Online play.** Hosted games are reachable by the game itself only (gasm guests can't listen).
-  The openbv server (Go, many sessions, an admin page) is in progress.
-- **The Game Browser.** It needs a master server; the original one is gone, and the openbv server
-  will take its place.
+- **Hosting from the game for others.** A game hosted in the client is reachable by that client only
+  (gasm guests can't listen); others play on [the openbv server](/guide/server).
 - **LAN search, server pings, remote admin.** They used baboNet's peer-to-peer UDP, which has no
   transport on gasm.
 - **Gamepad buttons.** Only the sticks and triggers are mapped.

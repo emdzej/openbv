@@ -82,7 +82,7 @@ func TestPingLogEverySecondFrame(t *testing.T) {
 
 func newTestServer(t *testing.T, gameType int, mapName string) *Server {
 	needContent(t)
-	s, err := New(session.Settings{Name: "test", GameType: gameType, Maps: []string{mapName}}, content, bbnet.New(), quiet)
+	s, err := New(session.Settings{Name: "test", GameType: gameType, Maps: []string{mapName}}, content, bbnet.New(), quiet, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,8 +162,8 @@ func startSession(t *testing.T, st session.Settings) (string, func()) {
 	needContent(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	mgr := session.NewManager(ctx, func(s session.Settings, net *bbnet.Server, l *slog.Logger) (session.Game, error) {
-		return New(s, content, net, l)
-	}, nil, 4, quiet)
+		return New(s, content, net, l, nil)
+	}, session.Options{MaxSessions: 4}, quiet)
 	s, err := mgr.Create(st)
 	if err != nil {
 		t.Fatal(err)

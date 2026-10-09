@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -54,6 +55,14 @@ func (s *Server) recvPacket(netID uint32, pk wire.Packet) {
 		// ServerRecv.cpp:439
 		m.PlayerName[31] = 0
 		p.Name = proto.CString(m.PlayerName[:])
+		m.MacAddr[len(m.MacAddr)-1] = 0
+		p.MAC = proto.CString(m.MacAddr[:])
+		// openbv: bans also match the client's MAC (design/server.md §8.4)
+		if b, ok := s.banned("", p.MAC); ok {
+			s.out(fmt.Sprintf("> Disconnecting banned client, %s. MAC: %s", b.Name, p.MAC))
+			s.kick(p.ID)
+			return
+		}
 		proto.SetCString(m.PlayerIP[:], p.IP)
 		s.broadcast(proto.ClsvSvclPlayerInfo, &m)
 		s.log.Info("player joined the game", "name", p.Name, "player", p.ID)
@@ -226,8 +235,32 @@ func (s *Server) recvPacket(netID uint32, pk wire.Packet) {
 			s.broadcast(proto.ClsvSvclPlayerShootMelee, &m)
 		}
 
-	case proto.ClsvVote, proto.ClsvSvclVoteRequest, proto.ClsvAdminRequest, proto.SvclConsole:
-		// votes and admin: the next milestones
+	case proto.ClsvVote:
+		var m proto.ClsvVoteMsg
+		proto.Decode(d, &m)
+		if p := s.player(m.PlayerID, netID); p != nil {
+			s.ballot(p, &m)
+		}
+
+	case proto.ClsvSvclVoteRequest:
+		var m proto.VoteRequestMsg
+		proto.Decode(d, &m)
+		if p := s.player(m.PlayerID, netID); p != nil {
+			s.voteRequest(p, &m)
+		}
+
+	case proto.ClsvAdminRequest:
+		var m proto.ClsvAdminRequestMsg
+		proto.Decode(d, &m)
+		s.adminRequest(netID, &m)
+
+	case proto.SvclConsole:
+		// an admin's command: the text up to its NUL
+		text := string(d)
+		if i := strings.IndexByte(text, 0); i >= 0 {
+			text = text[:i]
+		}
+		s.adminCommand(netID, text)
 
 	default:
 		s.log.Debug("unknown message", "type", pk.Type, "netId", netID)
@@ -367,98 +400,6 @@ func (s *Server) coordFrame(p *Player, m *proto.PlayerCoordFrameMsg) {
 		p.FrameSinceLast, p.LastFrame, p.CurrentFrame = 0, 0, 0
 	}
 	p.setCoordFrame(m)
-}
-
-// Command runs a server console command (Console::sendCommand, Console.cpp:586): the ones the
-// server issues itself at this stage. The admin page will run the rest.
-func (s *Server) Command(line string) {
-	cmd, rest, _ := strings.Cut(strings.TrimLeft(line, " "), " ")
-	switch strings.ToLower(cmd) {
-	case "sayall":
-		s.sayall(rest)
-	case "sayid": // Console.cpp:1602
-		idText, text, _ := strings.Cut(rest, " ")
-		id := atoi(idText)
-		if id < 0 || id >= proto.MaxPlayer || s.players[id] == nil {
-			s.log.Warn("sayid: bad player ID", "id", id)
-			return
-		}
-		msg := "\x08Server: " + text
-		if len(msg) > 49+80 {
-			msg = msg[:49+80]
-		}
-		var c proto.ChatMsg
-		c.TeamID = -3
-		proto.SetCString(c.Message[:], msg)
-		s.send(int32(s.players[id].BabonetID), proto.ClsvSvclChat, &c)
-	case "moveid": // Console.cpp:1031
-		f := strings.Fields(rest)
-		if len(f) < 2 {
-			return
-		}
-		team, id := atoi(f[0]), atoi(f[1])
-		if team < -1 || team > 1 || id < -1 || id >= proto.MaxPlayer || (id >= 0 && s.players[id] == nil) {
-			s.log.Warn("moveid: bad team or player", "team", team, "id", id)
-			return
-		}
-		move := func(i int) {
-			p := s.players[i]
-			// carried flags fall without a DROP_FLAG message (quirk)
-			for f := 0; f < 2; f++ {
-				if int(s.flagState[f]) == p.ID {
-					s.flagState[f] = -1
-					s.flagPos[f] = p.CurrentCF.Position
-					s.flagPos[f][2] = 0
-				}
-			}
-			p.CurrentCF.Position = bvmath.Vec3{-999, -999, 0}
-			s.assignPlayerTeam(i, team)
-			s.broadcast(proto.ClsvSvclTeamRequest, &proto.TeamRequestMsg{PlayerID: int8(i), TeamRequested: int8(team)})
-		}
-		if id == -1 {
-			for i := range s.players {
-				if s.players[i] != nil {
-					move(i)
-				}
-			}
-		} else {
-			move(id)
-		}
-	case "kickid":
-		if id := atoi(rest); id >= 0 && id < proto.MaxPlayer {
-			s.kick(id)
-		}
-	case "set":
-		name, value, _ := strings.Cut(strings.TrimLeft(rest, " "), " ")
-		if v := s.SV.Lookup(name); v != nil {
-			if !v.Set(value) {
-				s.log.Warn("set: invalid value", "var", name, "value", value)
-				return
-			}
-			if strings.HasPrefix(strings.ToLower(name), "sv_") {
-				var sc proto.SvclSvChangeMsg
-				proto.SetCString(sc.SvChange[:], s.SV.ChangeText(v.Name))
-				s.broadcast(proto.SvclSvChange, &sc)
-			}
-		}
-	default:
-		s.log.Warn("unknown command", "command", line)
-	}
-}
-
-// sayall is Server::sayall (Server.cpp:1554).
-func (s *Server) sayall(text string) {
-	if text == "" {
-		return
-	}
-	msg := "console : \x08" + text
-	if len(msg) > 49+80 {
-		msg = msg[:49+80]
-	}
-	var c proto.ChatMsg
-	c.TeamID = proto.TeamSpectator - 1
-	proto.SetCString(c.Message[:], msg)
-	s.broadcast(proto.ClsvSvclChat, &c)
 }
 
 // atoi is CString::toInt in the game (atoi): a leading number, 0 otherwise.

@@ -17,8 +17,9 @@ browser. The game code is the original, almost untouched: what changed is everyt
 underneath it. The rules, the maps, the weapons and the art are Babo Violent 2's own — the point is to
 play the same game, not a remake of it.
 
-Online play goes through a server of its own, written in Go, which hosts several games at once and comes
-with an admin page. That part is in progress.
+Online play goes through a server of its own, written in Go: one process hosts several games at once,
+each with its own port, rotation and rules, with an admin page and the game list for the in-game Game
+Browser. Its rules are the original server's, ported and checked against the C++ they came from.
 
 ## Download
 
@@ -31,6 +32,20 @@ include `gasm-run` and the game's content (from the GPL source release), so ther
 | `openbv-gasm-<version>-linux-x86_64.tar.gz`, `-linux-arm64.tar.gz` | `./openbv.sh` |
 | `openbv-gasm-<version>-windows-x86_64.zip` | `OpenBV.cmd` |
 | `openbv-<version>.wasm` | The module alone, for your own `gasm-run` |
+| `openbv-server-<version>-<os>-<arch>` | The server (Linux, macOS, Windows); also `ghcr.io/emdzej/openbv-server` |
+
+## Run a server
+
+```sh
+docker run -d -p 8080:8080 -p 10207:10207 -p 3333:3333 -e OPENBV_ADMIN_TOKEN=change-me \
+  -v openbv-data:/data ghcr.io/emdzej/openbv-server
+```
+
+Open `http://<host>:8080/admin/`, sign in with the token and create a session on port 3333. Players see it
+in the Game Browser with `./play --master=<host>:10207` (the game's launch parameter `master`), or join with
+`connect <host> 3333` in the game's console. Everything else (variables, OIDC sign-in, proxies, votes,
+in-game admins) is in [Running a server](https://openbv.emdzej.pl/guide/server) and
+[server/README.md](server/README.md).
 
 ## Build and play from source
 

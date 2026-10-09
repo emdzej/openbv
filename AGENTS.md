@@ -20,10 +20,11 @@ original's behaviour, quirks included. The reference is the Windows build of 2.1
 configuration: `_PRO_`, `_MD5CODESEG_`); where the source has Windows and Linux branches that differ, the
 Windows one is the behaviour to keep.
 
-**State:** the client runs: menus, hosting a game (in-process server), local play, sound. Not yet: online
-play (the Go server in `server/` is planned: WebSocket transport, several sessions per process, an admin
-UI; its game rules are a Go port of `Server*.cpp` and the shared simulation), the master server list, the
-browser player, gamepad buttons, the Prozac 2.1.3 data (renders without text: its font differs).
+**State:** the client runs: menus, hosting a game (in-process server), local play, sound, the browser
+player. Online play runs on the Go server in `server/` (milestones 1–5 of `design/server.md` §10.2: the
+original's rules ported and checked against its code, several sessions per process, votes, bans, in-game
+admins, an admin page, the master for the Game Browser; see `server/README.md`). Not yet: gamepad buttons,
+pings in the Game Browser (no UDP), the rest of Prozac 2.1.3's changes.
 
 ## Layout
 
@@ -80,7 +81,9 @@ Unattended runs: always `--headless`, never a window.
 Network runs (a client against the Go server in `server/`) need `--realtime` (headless virtual time runs
 far ahead of the network) and `--allow-net=127.0.0.1`. `--param netlog=1` prints every packet the client
 sends and receives (`src/port/babonet_gasm.cpp`; off by default, hashes unchanged): host a game in the
-client for the original server's sequence, compare with the Go server's.
+client for the original server's sequence, compare with the Go server's. The Game Browser lists a Go
+server's sessions with `./play --master=127.0.0.1:<OPENBV_MASTER_PORT>` (10207); clicks in the redesigned
+menus: Game Browser tab `PTR(356,43)`, the first listed game `PTR(130,146)` (double-click to join).
 
 ## Data
 

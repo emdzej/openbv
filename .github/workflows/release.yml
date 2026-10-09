@@ -5,7 +5,8 @@ name: Release
 # the vanilla 2.11 content from tools/fetch-content.sh and the released gasm-run, GASM_VERSION in
 # tools/fetch-gasm-sdk.sh) for macOS, Linux x86_64/arm64 and Windows x86_64, smoke-tests each bundle on its
 # own OS (600 headless frames, the expected hashes), and attaches everything (with SHA-256 files) to a
-# GitHub Release. workflow_dispatch builds the same files as artifacts only (0.0.0-snapshot.<sha>).
+# GitHub Release, with the openbv-server binaries (Linux, macOS, Windows) and the ghcr.io/emdzej/openbv-server
+# image. workflow_dispatch builds the same files as artifacts only (0.0.0-snapshot.<sha>).
 
 on:
   push:
@@ -170,9 +171,73 @@ jobs:
           $global:LASTEXITCODE = 0
           'PASS'
 
+  server:
+    needs: wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: build openbv-server (Linux, macOS, Windows)
+        env:
+          VERSION: ${{ needs.wasm.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            os=${target%/*}; arch=${target#*/}
+            name="openbv-server-$VERSION-$os-$arch"
+            dir="dist/$name"; mkdir -p "$dir"
+            exe=openbv-server; [ "$os" = windows ] && exe=openbv-server.exe
+            (cd server && CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "../$dir/$exe" ./cmd/openbv-server)
+            cp LICENSE "$dir/"
+            cp server/README.md "$dir/README.md"
+            if [ "$os" = windows ]; then (cd dist && zip -qr "$name.zip" "$name" && sha256sum "$name.zip" > "$name.zip.sha256")
+            else (cd dist && tar czf "$name.tar.gz" "$name" && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"); fi
+            rm -rf "$dir"
+          done
+          ls -l dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: openbv-server
+          path: dist/*
+
+  server-image:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: wasm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: build and push ghcr.io/emdzej/openbv-server
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: VERSION=${{ needs.wasm.outputs.version }}
+          push: true
+          tags: |
+            ghcr.io/emdzej/openbv-server:${{ needs.wasm.outputs.version }}
+            ghcr.io/emdzej/openbv-server:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/emdzej/openbv
+            org.opencontainers.image.licenses=GPL-3.0-or-later
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [wasm, gasm-macos, gasm-package, gasm-smoke-linux, gasm-smoke-windows]
+    needs: [wasm, gasm-macos, gasm-package, gasm-smoke-linux, gasm-smoke-windows, server, server-image]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

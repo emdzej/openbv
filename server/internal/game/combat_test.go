@@ -16,6 +16,7 @@ type sentMsg struct {
 // a DM server with two alive players facing each other across open floor, no spawn immunity
 func duel(t *testing.T, weaponID int) (*Server, *Player, *Player, *[]sentMsg) {
 	s := newTestServer(t, proto.GameTypeDM, "DM-MiniArena")
+	s.rand.Seed(1) // the server seeds with the clock: the tests want the same throws every run
 	var log []sentMsg
 	s.sent = func(dest int32, typ uint16, msg any) { log = append(log, sentMsg{dest, typ, msg}) }
 	a, b := s.openPair(t, 4)

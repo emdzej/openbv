@@ -41,6 +41,7 @@ export default defineConfig({
             { text: "Playing in the browser", link: "/guide/browser" },
             { text: "Controls", link: "/guide/controls" },
             { text: "Hosting a game", link: "/guide/hosting" },
+            { text: "Running a server", link: "/guide/server" },
             { text: "Building from source", link: "/guide/build" },
           ],
         },

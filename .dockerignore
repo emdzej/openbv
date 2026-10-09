@@ -1,0 +1,5 @@
+# the image (server/Dockerfile) needs only the server, the content script and the licence
+*
+!server/
+!tools/fetch-content.sh
+!LICENSE

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/emdzej/openbv/server/internal/cvar"
 	"github.com/emdzej/openbv/server/internal/proto"
 	"github.com/emdzej/openbv/server/internal/session"
+	"github.com/emdzej/openbv/server/internal/store"
 	"github.com/emdzej/openbv/server/internal/wire"
 )
 
@@ -54,8 +56,6 @@ type checksumQuery struct {
 	elapsed  float32
 }
 
-type ban struct{ name, ip string }
-
 // Server is one game server (Server + its Game).
 type Server struct {
 	SV   *cvar.SV
@@ -86,11 +86,18 @@ type Server struct {
 	mapInfos       []mapInfo
 	transfers      []mapTransfer
 	checksums      []checksumQuery
-	banList        []ban
 	infoSendDelay  float32
 	nbPlayers      int
 
 	autoBalanceTimer float32 // Server::autoBalanceTimer (Server.cpp:51): never reset by a map change
+
+	// administration (milestone 5, admin.go and console.go)
+	vote     voting
+	voteList []string          // Server::voteList: the votable commands (voteon)
+	bans     *store.Bans       // the process's ban list, shared by its sessions
+	control  session.Control   // the session's hooks
+	setCvars map[string]string // the sv_*/zsv_* values the console set, for the saved settings
+	capture  *[]string         // while a command runs: what it prints
 
 	// combat (milestone 2)
 	weapons            [proto.WeaponMinibot + 1]weaponDef // gameVar.weapons: changed at run time
@@ -105,9 +112,11 @@ type Server struct {
 }
 
 // New hosts a game for a session (Server::host, Server.cpp:150): its map is the first of the
-// rotation.
-func New(st session.Settings, content string, net *bbnet.Server, log *slog.Logger) (*Server, error) {
+// rotation. bans is the process's ban list (nil: none).
+func New(st session.Settings, content string, net *bbnet.Server, log *slog.Logger, bans *store.Bans) (*Server, error) {
 	s := &Server{
+		bans:          bans,
+		setCvars:      map[string]string{},
 		SV:            cvar.NewSV(),
 		Opts:          Options{BindPlayerID: true},
 		net:           net,
@@ -133,6 +142,33 @@ func New(st session.Settings, content string, net *bbnet.Server, log *slog.Logge
 	}
 	if st.Port != 0 {
 		s.SV.Port.I = int32(st.Port)
+	}
+	s.SV.AdminUser.S = st.AdminUser
+	s.SV.AdminPass.S = st.AdminPassword
+	s.SV.GamePublic.B = !st.Private
+	for _, c := range st.VoteOn {
+		if c = strings.ToLower(strings.TrimSpace(c)); c != "" {
+			s.voteList = append(s.voteList, c)
+		}
+	}
+	// any other variable, as the console's set takes it (the names sorted: the same result every time)
+	names := make([]string, 0, len(st.Cvars))
+	for k := range st.Cvars {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	for _, k := range names {
+		v := s.SV.Lookup(k)
+		if v == nil || !(strings.HasPrefix(strings.ToLower(v.Name), "sv_") || strings.HasPrefix(strings.ToLower(v.Name), "zsv_")) {
+			return nil, fmt.Errorf("unknown server variable %q", k)
+		}
+		if !v.Strict(st.Cvars[k]) || !v.Set(st.Cvars[k]) {
+			return nil, fmt.Errorf("invalid value %q for %s", st.Cvars[k], v.Name)
+		}
+		s.setCvars[v.Name] = st.Cvars[k]
+	}
+	if len(s.SV.Password.S) > 15 {
+		s.SV.Password.S = s.SV.Password.S[:15]
 	}
 	maps := st.Maps
 	if len(maps) == 0 {
@@ -362,6 +398,7 @@ func (s *Server) Frame() {
 // playing, each followed by its photon beam and the check that its weapons are still allowed; the
 // minibots' wall collisions; then the projectiles, round over or not.
 func (s *Server) gameUpdate() {
+	s.updateVote()
 	if s.roundState == proto.GamePlaying {
 		for i, p := range s.players {
 			if p == nil {
@@ -393,12 +430,10 @@ func (s *Server) updateNet() {
 	switch ev.Kind {
 	case bbnet.EvNew:
 		s.log.Info("a client has connected", "netId", ev.NetID, "ip", ev.IP)
-		for _, b := range s.banList {
-			if b.ip == ev.IP {
-				s.net.Disconnect(ev.NetID)
-				s.log.Info("disconnecting banned client", "name", b.name, "ip", ev.IP)
-				return
-			}
+		if b, ok := s.banned(ev.IP, ""); ok {
+			s.net.Disconnect(ev.NetID)
+			s.out(fmt.Sprintf("> Disconnecting banned client, %s. IP: %s", b.Name, ev.IP))
+			return
 		}
 		id := s.createNewPlayer(ev.NetID)
 		if id == -1 {
@@ -415,6 +450,7 @@ func (s *Server) updateNet() {
 		for i, p := range s.players {
 			if p != nil && p.BabonetID == ev.NetID {
 				s.log.Info("player disconnected", "name", p.Name, "player", i)
+				s.cancelVoteFor(i, p)
 				s.deletePlayer(i)
 				s.broadcast(proto.SvclPlayerDisconnect, &proto.SvclPlayerDisconnectMsg{PlayerID: int8(i)})
 				break
@@ -881,8 +917,8 @@ func (s *Server) Players() []session.PlayerInfo {
 	out := []session.PlayerInfo{}
 	for i, p := range s.players {
 		if p != nil {
-			out = append(out, session.PlayerInfo{ID: i, NetID: p.BabonetID, Name: p.Name, Remote: p.IP,
-				Team: p.TeamID, Score: int(p.Score), Ping: int(p.Ping) * 33})
+			out = append(out, session.PlayerInfo{ID: i, NetID: p.BabonetID, Name: colorLess(p.Name), Remote: p.IP, MAC: p.MAC,
+				Team: p.TeamID, Score: int(p.Score), Kills: int(p.Kills), Deaths: int(p.Deaths), Ping: int(p.Ping) * 33, Admin: p.IsAdmin})
 		}
 	}
 	return out

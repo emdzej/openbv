@@ -7,6 +7,7 @@ package session
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/emdzej/openbv/server/internal/bbnet"
@@ -18,7 +19,8 @@ const TickRate = 30
 // maxCatchUp bounds the frames run back to back after a stall.
 const maxCatchUp = 10
 
-// Settings are what the admin page sets when creating a session.
+// Settings are a session's configuration: what the admin page sets when creating it, kept in
+// OPENBV_DATA/sessions.json and updated when the console changes them (Changes).
 type Settings struct {
 	Name       string   `json:"name"`     // sv_gameName
 	Password   string   `json:"password"` // sv_password
@@ -26,12 +28,46 @@ type Settings struct {
 	MaxPlayers int      `json:"maxPlayers"`
 	Maps       []string `json:"maps"` // the rotation, by name without .bvm
 	Port       int      `json:"port"` // sv_port: the session listens there
+
+	// Cvars are any other sv_* (and zsv_*) values, as the console's `set` takes them; applied after
+	// the fields above, so they win.
+	Cvars map[string]string `json:"cvars,omitempty"`
+	// AdminUser and AdminPassword are zsv_adminUser and zsv_adminPass: the in-game admin login
+	// ("admin <user> <password>" in the client's console). Both empty: no in-game admins.
+	AdminUser     string `json:"adminUser,omitempty"`
+	AdminPassword string `json:"adminPassword,omitempty"`
+	// VoteOn are the commands players may vote on (the console's voteon), e.g. "kick", "changemap",
+	// "sv_gametype". Empty: no vote is valid, as in the original.
+	VoteOn []string `json:"voteOn,omitempty"`
+	// Private keeps the session out of the master's list (sv_gamePublic false).
+	Private bool `json:"private,omitempty"`
+}
+
+// Changes are what a game's console changed: the sv_*/zsv_* values set since it started, the
+// rotation and the votable commands.
+type Changes struct {
+	Cvars  map[string]string
+	Maps   []string
+	VoteOn []string
+}
+
+// Control is what a game may ask of its session. Its functions are called from the session's
+// goroutine; they must not wait for it.
+type Control struct {
+	Restart func()        // the console's restart: the session starts again with its settings
+	Stop    func()        // the console's quit
+	Changed func(Changes) // save what the console changed
 }
 
 // Game is the rules side of a session (internal/game). All calls come from the session's goroutine.
 type Game interface {
 	Frame()
 	Players() []PlayerInfo
+	Status() Status
+	Cvars() []CvarInfo
+	// Exec runs a console command as the given admin and returns what it printed.
+	Exec(line, who string) []string
+	SetControl(Control)
 	Close()
 }
 
@@ -41,16 +77,64 @@ type PlayerInfo struct {
 	NetID  uint32 `json:"netId"`
 	Name   string `json:"name"`
 	Remote string `json:"remote"`
+	MAC    string `json:"mac,omitempty"`
 	Team   int    `json:"team"`
 	Score  int    `json:"score"`
-	Ping   int    `json:"ping"`
+	Kills  int    `json:"kills"`
+	Deaths int    `json:"deaths"`
+	Ping   int    `json:"ping"` // ms
+	Admin  bool   `json:"admin,omitempty"`
+}
+
+// Status is a session's game as the admin page and the master see it.
+type Status struct {
+	Name          string      `json:"name"`
+	Map           string      `json:"map"`
+	NextMap       string      `json:"nextMap"`
+	GameType      int         `json:"gameType"`
+	RoundState    int         `json:"roundState"`
+	Players       int         `json:"players"`
+	MaxPlayers    int         `json:"maxPlayers"`
+	Port          int         `json:"port"`
+	Passworded    bool        `json:"passworded"`
+	Public        bool        `json:"public"`
+	BlueScore     int         `json:"blueScore"`
+	RedScore      int         `json:"redScore"`
+	BlueWin       int         `json:"blueWin"`
+	RedWin        int         `json:"redWin"`
+	GameTimeLeft  float32     `json:"gameTimeLeft"`
+	RoundTimeLeft float32     `json:"roundTimeLeft"`
+	Rotation      []string    `json:"rotation"`
+	VoteOn        []string    `json:"voteOn"`
+	Vote          *VoteStatus `json:"vote,omitempty"`
+}
+
+// VoteStatus is a vote in progress.
+type VoteStatus struct {
+	From      string  `json:"from"`
+	What      string  `json:"what"`
+	Yes       int     `json:"yes"`
+	No        int     `json:"no"`
+	Voters    int     `json:"voters"`
+	Remaining float32 `json:"remaining"`
+}
+
+// CvarInfo is one console variable.
+type CvarInfo struct {
+	Name  string `json:"name"`
+	Help  string `json:"help"`
+	Kind  string `json:"kind"` // bool, int, float, string
+	Value string `json:"value"`
 }
 
 // Session is one game server.
 type Session struct {
-	ID       string
-	Created  time.Time
-	Net      *bbnet.Server
+	ID      string
+	Created time.Time
+	Net     *bbnet.Server
+	Log     *LogRing // its last log lines (the admin page)
+
+	mu       sync.Mutex
 	settings Settings
 	game     Game
 	calls    chan func(Game)
@@ -67,15 +151,48 @@ func New(ctx context.Context, id string, s Settings, net *bbnet.Server, g Game, 
 		settings: s,
 		game:     g,
 		calls:    make(chan func(Game), 64),
-		log:      log.With("session", id),
+		log:      log,
 		done:     make(chan struct{}),
 	}
 	go ses.run(ctx)
 	return ses
 }
 
-// Settings returns the session's settings.
-func (s *Session) Settings() Settings { return s.settings }
+// Settings returns the session's settings (with what its console changed since).
+func (s *Session) Settings() Settings {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	st := s.settings
+	st.Maps = append([]string(nil), st.Maps...)
+	st.VoteOn = append([]string(nil), st.VoteOn...)
+	if st.Cvars != nil {
+		c := make(map[string]string, len(st.Cvars))
+		for k, v := range st.Cvars {
+			c[k] = v
+		}
+		st.Cvars = c
+	}
+	return st
+}
+
+// setChanges folds a console's changes into the settings and returns them.
+func (s *Session) setChanges(c Changes) Settings {
+	s.mu.Lock()
+	if len(c.Cvars) > 0 && s.settings.Cvars == nil {
+		s.settings.Cvars = map[string]string{}
+	}
+	for k, v := range c.Cvars {
+		s.settings.Cvars[k] = v
+	}
+	if c.Maps != nil {
+		s.settings.Maps = c.Maps
+	}
+	if c.VoteOn != nil {
+		s.settings.VoteOn = c.VoteOn
+	}
+	s.mu.Unlock()
+	return s.Settings()
+}
 
 // Done is closed when the session has stopped.
 func (s *Session) Done() <-chan struct{} { return s.done }

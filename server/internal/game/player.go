@@ -139,6 +139,8 @@ type Player struct {
 
 	IsAdmin bool
 	UserID  int
+	Voted   bool   // Player::voted
+	MAC     string // the player info's macAddr (openbv: a stable random one per installation)
 }
 
 // newPlayer is Player::Player (Player.cpp:61).

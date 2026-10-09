@@ -1225,6 +1225,21 @@ Milestone 3 (projectiles and secondaries):
 | `Map::collisionClip` and `performCollision`: a neighbour index outside the cell array counts as a wall | The original read past the array (only possible for a bot pushed to the map's edge). Neighbours of edge cells still wrap into the next/previous row, as in the original. |
 | A projectile of an unknown type (a client asked for type 0, 1 or 9+) lives 0 s and is deleted at once | The constructor left `duration` uninitialised for them. |
 
+Milestone 5 (administration, the master):
+
+| Deviation | Why |
+|---|---|
+| Bans are shared by a process's sessions, kept in `OPENBV_DATA/bans.json` with the time and who banned, and also match the client's MAC (the player info's `macAddr`; openbv's client sends a stable random one per installation); `banmac <mac>` adds one | The original's `main/banlist` was per server and by IP only; several sessions per process should not each need their own bans, and a MAC ban survives a changing address. A MAC match disconnects the player when his player info arrives. |
+| `nuke <name>` with an unknown name prints an error | The original used an uninitialised ID. |
+| `forceplayerspawn` sends zeros for the skin and decals | The original copied raw bytes of its CStrings and floats there. |
+| The console's `set` takes server variables only (`sv_*`, `zsv_*`); `zsv_*` (the admin login) are never sent to clients | A dedicated server has no client variables; the admin password must not go to players. |
+| `restart` restarts the session (same settings, ID and port), `quit` stops it | The original rebuilt its scene / quit the process. |
+| The account, master-cache, invalid-checksum, report-URL and remote-admin commands answer "not available" | Those services are gone; remote admin is the admin page. |
+| Session settings (`cvars`) are parsed strictly (a number for numbers, `true`/`false`); the console's `set` keeps the engine's `sscanf` (`banana` is 0) | Settings come from the admin page and a file: typos should be refused, not become 0. |
+| The master lists a passworded game with the password `*`, and its own sessions with an empty `ip`; the client joins an empty-`ip` game at the master's host (`CMaster::gameHost`, a small client change, and `m_IP` grows from 16 bytes to 256 for host names) | The original sent every game's password to every browsing client (§9.1); a 16-byte field can't hold most host names. |
+| A game server registering with the master (`BV2_ROW`) is listed with its connection's address (IPv4 only), expires after 60 s without an update, and is removed by `KILL_SERV` | §9.2; at most 1,024 registrations. |
+| Game connections per client address are rate-limited (`OPENBV_CONN_PER_MINUTE`, 30 a minute); `X-Forwarded-For` is believed only with `OPENBV_TRUST_PROXY` | A public server needs both; otherwise any client could claim any address past bans. |
+
 Arithmetic: all game maths is float32 with every product rounded on its own (Go may fuse `a*b+c` on arm64;
 the C++ and the wasm client don't), `cosf`/`sinf` are musl's (`bvmath/muslmath.go`, the wasm client's libc:
 a correctly rounded cosf differs in the last bit for some angles, and `(short)(x*100)` can turn that into a
@@ -1327,7 +1342,7 @@ through a command channel processed at the start of a frame (like console input)
 
 ### 10.2 Milestones
 
-Status (October 2026): milestones 1 to 4 are done (`server/`); the rest is to do.
+Status (October 2026): milestones 1 to 5 are done (`server/`); milestone 6's items are in place except where noted.
 
 1. **[done] Wire + handshake + presence.** `proto` with golden tests for every struct; transport; session loop;
    connect/disconnect events; the handshake and state dump (§2.2); ping/pong (§5.11); chat; name/skin;
@@ -1350,10 +1365,21 @@ Status (October 2026): milestones 1 to 4 are done (`server/`); the rest is to do
    moves), 1,500 team assignments, 2,000 spawn choices over all game types, 200 type-3 round resets; with two
    openbv clients on a Go CTF session (a capture) and a TDM session (a kill and the team score); and against
    the C++ listen server for a lone player's capture (the same flag messages, byte for byte).
-5. **Server administration.** Votes (§5.16), console commands (§7), bans, admin login; the HTTP admin UI and
-   multi-session management; the master (§9).
+5. **[done] Server administration.** Votes (§5.16: `game/admin.go`), the dedicated server's console commands
+   (§7: `game/console.go`), bans (by IP and MAC, shared, `OPENBV_DATA/bans.json`), the in-game admin login
+   (`NET_CLSV_ADMIN_REQUEST` with `zsv_adminUser`/`zsv_adminPass`) and its console (`NET_SVCL_CONSOLE` both
+   ways). Sessions: settings with any `sv_*`, saved and restored (`sessions.json`), console changes kept,
+   restart and update; per-address connection limits. The admin API and page (`internal/admin`: sessions,
+   players, console and log tail, variables, rotation, bans, audit log; token or OIDC sign-in). The master
+   (`internal/master`, §9): the process's public sessions and registered servers. Checked with unit tests
+   (votes passing, timing out with `sv_enableVote` off, cancelled when the target leaves; the admin login's
+   MD5s; `set`; bans; the rotation), the API with `httptest`, the master over a WebSocket, and end to end: an
+   openbv client's Game Browser listing two Go sessions from the Go master and joining one, a live player
+   banned from the admin page (disconnected, IP and MAC listed), sessions restored after a server restart.
 6. **Hardening and deviations** (documented): playerID binding, password not echoed, bounds checks, rate
-   limits per connection, session/player caps.
+   limits per connection, session/player caps — in place (§8.4). Still open: a per-connection message rate
+   limit inside a session (the bounded queues cap memory, not CPU), and pings to listed games (the client's
+   `CPing` has no UDP; rows show `???`).
 
 ### 10.3 Testing against the original
 

@@ -173,7 +173,11 @@ void CBrowser::updatePerso(float delay)
 			Name->toolTips = "";
 			Name->toolTips += CString("\x6Map name:\x8 %s\n", holdRow->bv2Row->map);
 			Name->toolTips += CString("\x6Passworded:\x8 %s\n", (holdRow->bv2Row->password[0] == 0)?"\x2No":"\x4Yes");
+#ifdef OPENBV_GASM
+			Name->toolTips += CString("\x6IP:\x8 %s\n", master ? master->gameHost(holdRow->bv2Row) : holdRow->bv2Row->ip);
+#else
 			Name->toolTips += CString("\x6IP:\x8 %s\n", holdRow->bv2Row->ip);
+#endif
 			Name->toolTips += CString("\x6Port:\x8 %i", holdRow->bv2Row->port);
 
 			nbGames++;
@@ -262,7 +266,11 @@ void CBrowser::DbClick(CControl * control)
 	// on check si y a un custom data
 	if (control->customData)
 	{
+#ifdef OPENBV_GASM
+		txt_ip->text = master ? master->gameHost(((SBrowsableGame*)(control->customData))->bv2Row) : ((SBrowsableGame*)(control->customData))->bv2Row->ip;
+#else
 		txt_ip->text = ((SBrowsableGame*)(control->customData))->bv2Row->ip;
+#endif
 		txt_ip->text += CString(" " ) + CString("%i", ((SBrowsableGame*)(control->customData))->bv2Row->port);
 	}
 	// on check si y a un custom data
@@ -277,7 +285,11 @@ void CBrowser::DbClick(CControl * control)
 
 			//--- Bah, on launch ste game là !!!
 			command = "connect ";
+#ifdef OPENBV_GASM
+			command += CString("%s", master ? master->gameHost(((SBrowsableGame*)(control->customData))->bv2Row) : ((SBrowsableGame*)(control->customData))->bv2Row->ip);
+#else
 			command += ((SBrowsableGame*)(control->customData))->bv2Row->ip;
+#endif
 			command += " ";
 			command += CString("%i", ((SBrowsableGame*)(control->customData))->bv2Row->port);
 			command += " ";

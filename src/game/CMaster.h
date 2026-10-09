@@ -106,6 +106,7 @@ private:
 
 	friend class CMaster;
 public:
+
 	bool createAccount(char* login, char* password, char* nick, char* email);
 	bool deleteAccount(int userID, char* password);
 	bool updateAccount(char* login, char* password, char* nick, char* email);
@@ -134,7 +135,12 @@ private:
 	short s1,s2,s3,s4;
 
 	// holds the master server IP
+#ifdef OPENBV_GASM
+	// openbv: a host name (openbv.emdzej.pl is 16 characters), not only a dotted IP
+	char m_IP[256];
+#else
 	char m_IP[16];
+#endif
 
 	// holds the master server Port
 	unsigned short m_Port;
@@ -182,6 +188,11 @@ private:
 	bool IsRemoteAdmin( long in_peerId );
 
 public:
+#ifdef OPENBV_GASM
+	// openbv: where to join a listed game. A game list row's ip is 16 bytes; a master that can't fit
+	// its host there (or lists its own sessions) leaves it empty, and the game is at the master's host.
+	const char * gameHost(const stBV2row * row) const { return (row->ip[0] || !m_IP[0]) ? row->ip : m_IP; }
+#endif
 	AccountManagerClient AccountManager;
 
 	stCacheAnswer	BannedAnswers[64]; //we keep a max of 64 cached banned answers

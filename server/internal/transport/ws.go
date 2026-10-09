@@ -81,7 +81,7 @@ func Accept(w http.ResponseWriter, r *http.Request, h Handler, origins []string,
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &Conn{
 		ID:     lastID.Add(1),
-		Remote: remoteIP(r),
+		Remote: RemoteIP(r),
 		ws:     ws,
 		out:    make(chan []byte, SendQueue),
 		cancel: cancel,
@@ -141,9 +141,14 @@ func (c *Conn) writer(ctx context.Context) {
 	}
 }
 
-// remoteIP is the client's address: the proxy's X-Forwarded-For first entry if set, else the peer.
-func remoteIP(r *http.Request) string {
-	if f := r.Header.Get("X-Forwarded-For"); f != "" {
+// TrustProxy makes RemoteIP believe X-Forwarded-For (OPENBV_TRUST_PROXY: only behind a proxy that
+// sets it; otherwise any client could claim any address, past bans and rate limits).
+var TrustProxy bool
+
+// RemoteIP is the client's address: with TrustProxy the proxy's X-Forwarded-For first entry if set,
+// else the peer.
+func RemoteIP(r *http.Request) string {
+	if f := r.Header.Get("X-Forwarded-For"); TrustProxy && f != "" {
 		for i := 0; i < len(f); i++ {
 			if f[i] == ',' {
 				return f[:i]
