@@ -21,7 +21,7 @@
 #define DIALOG_H
 
 #include "CListener.h"
-#include "fastdelegate.h"
+#include "FastDelegate.h"
 
 enum DialogButtons
 {

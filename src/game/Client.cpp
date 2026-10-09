@@ -26,7 +26,7 @@
 #include "CStatus.h"
 
 #ifdef _PRO_
-#include "Screengrab.h"
+#include "screengrab.h"
 #endif
 
 extern Scene * scene;
