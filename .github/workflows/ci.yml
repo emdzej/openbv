@@ -14,6 +14,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  server:
+    name: Go server (vet, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: fetch the content (the map tests load every map)
+        run: tools/fetch-content.sh
+      - name: vet and test
+        working-directory: server
+        env:
+          OPENBV_TEST_CONTENT: ${{ github.workspace }}/.deps/content
+        run: |
+          go vet ./...
+          go test ./...
+
   wasm:
     runs-on: ubuntu-latest
     steps:

@@ -12,11 +12,12 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/emdzej/openbv/server/internal/bbnet"
 	"github.com/emdzej/openbv/server/internal/transport"
 )
 
-// NewGame makes the rules for a new session.
-type NewGame func(s Settings, log *slog.Logger) (Game, error)
+// NewGame makes the rules for a new session around its connections.
+type NewGame func(s Settings, net *bbnet.Server, log *slog.Logger) (Game, error)
 
 // Manager owns the sessions of one server process.
 type Manager struct {
@@ -62,12 +63,13 @@ func (m *Manager) Create(st Settings) (*Session, error) {
 	}
 	id := newID()
 	log := m.log.With("session", id)
-	g, err := m.newGame(st, log)
+	bnet := bbnet.New()
+	g, err := m.newGame(st, bnet, log)
 	if err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(m.ctx)
-	s := New(ctx, id, st, g, m.log)
+	s := New(ctx, id, st, bnet, g, m.log)
 	e := &entry{s: s, cancel: cancel}
 	if st.Port != 0 {
 		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", st.Port))
@@ -144,7 +146,7 @@ func (m *Manager) ServeSession(id string, w http.ResponseWriter, r *http.Request
 }
 
 func (m *Manager) serve(s *Session, w http.ResponseWriter, r *http.Request) {
-	transport.Accept(w, r, s, m.origins, m.log)
+	transport.Accept(w, r, s.Net, m.origins, m.log)
 }
 
 func newID() string {

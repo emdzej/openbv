@@ -77,6 +77,11 @@ team `1060:PTR(309,174),...`, spawn by shooting `1300:PTR(800,300,L)`. The conso
 
 Unattended runs: always `--headless`, never a window.
 
+Network runs (a client against the Go server in `server/`) need `--realtime` (headless virtual time runs
+far ahead of the network) and `--allow-net=127.0.0.1`. `--param netlog=1` prints every packet the client
+sends and receives (`src/port/babonet_gasm.cpp`; off by default, hashes unchanged): host a game in the
+client for the original server's sequence, compare with the Go server's.
+
 ## Data
 
 Vanilla: `ref/BaboViolent2/BaboViolent2/Content` (bv2.db, main/). Prozac 2.1.3: `game/` (from

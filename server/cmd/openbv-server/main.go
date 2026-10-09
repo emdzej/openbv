@@ -8,6 +8,7 @@
 //	OPENBV_CONTENT      the game's content folder (bv2.db, main/): maps are read from main/maps
 //	OPENBV_ORIGINS      browser origins allowed to connect (the web player), comma-separated
 //	OPENBV_MAX_SESSIONS sessions at most (16)
+//	OPENBV_DEBUG        1: debug logs, 2: also every packet sent and received
 //	OPENBV_SESSION      a session to start at boot, as JSON (session.Settings), e.g.
 //	                    {"name":"My server","gameType":0,"port":3333,"maps":["CTF-Daivuk"]}
 package main
@@ -26,6 +27,7 @@ import (
 	"time"
 
 	"github.com/emdzej/openbv/server/internal/admin"
+	"github.com/emdzej/openbv/server/internal/bbnet"
 	"github.com/emdzej/openbv/server/internal/game"
 	"github.com/emdzej/openbv/server/internal/session"
 )
@@ -41,7 +43,11 @@ func env(k, def string) string {
 
 func main() {
 	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	if os.Getenv("OPENBV_DEBUG") != "" {
+	switch os.Getenv("OPENBV_DEBUG") {
+	case "":
+	case "2": // every packet too
+		log = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug - 4}))
+	default:
 		log = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -54,8 +60,8 @@ func main() {
 	maxSessions, _ := strconv.Atoi(env("OPENBV_MAX_SESSIONS", "16"))
 	content := env("OPENBV_CONTENT", "content")
 
-	newGame := func(s session.Settings, l *slog.Logger) (session.Game, error) {
-		return game.New(s, content, l)
+	newGame := func(s session.Settings, net *bbnet.Server, l *slog.Logger) (session.Game, error) {
+		return game.New(s, content, net, l)
 	}
 	mgr := session.NewManager(ctx, newGame, origins, maxSessions, log)
 

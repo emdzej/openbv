@@ -64,8 +64,9 @@ func (c *Conn) Send(p wire.Packet) bool {
 func (c *Conn) Close(reason string) {
 	c.once.Do(func() {
 		c.closed.Store(true)
-		c.ws.Close(websocket.StatusNormalClosure, reason)
 		c.cancel()
+		// the close handshake can take seconds: never on the caller's (the game's) time
+		go c.ws.Close(websocket.StatusNormalClosure, reason)
 	})
 }
 

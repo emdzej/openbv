@@ -168,6 +168,23 @@ namespace
 		if (c->state == 1 && st >= 2 && c->in.packets.empty()) c->state = 2;
 	}
 
+	// --param netlog=1: every packet the game's client sends and receives, on stdout, to compare
+	// servers (design/server.md §10.3). Off unless asked for; nothing else changes.
+	int netlog = -1;
+	void logPacket(const char *dir, int type, const char *data, int size)
+	{
+		if (netlog < 0)
+		{
+			char v[8] = "";
+			gasm_param_str("netlog", v, sizeof(v));
+			netlog = (v[0] == '1') ? 1 : 0;
+		}
+		if (!netlog) return;
+		printf("netlog %s type=%d size=%d data=", dir, type, size);
+		for (int i = 0; i < size && data && data != (const char *)1; i++) printf("%02x", (unsigned char)data[i]);
+		printf("\n");
+	}
+
 	void dropServerClient(ServerClient *sc)
 	{
 		if (sc->gone) return;
@@ -407,6 +424,7 @@ int bb_clientSend(UINT4 clientID, char *dataToSend, int dataSize, int typeID, in
 	Client *c = clientByID(clientID);
 	if (!c) return 1;
 	if (c->state != 1) return 0;
+	logPacket("send", typeID, dataToSend, dataSize);
 	if (c->loopback)
 	{
 		ServerClient *sc = serverClientByID(c->serverSideID);
@@ -427,7 +445,10 @@ char *bb_clientReceive(UINT4 clientID, int *typeID)
 {
 	Client *c = clientByID(clientID);
 	if (!c) { *typeID = 0; return 0; }
-	return c->in.take(typeID, 0);
+	int size = 0;
+	char *d = c->in.take(typeID, &size);
+	if (d) logPacket("recv", *typeID, d, size);
+	return d;
 }
 
 int bb_clientDisconnect(UINT4 clientID)

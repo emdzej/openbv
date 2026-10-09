@@ -1180,6 +1180,18 @@ checks — reject); `players[-1]` in `moveid`; `nuke` with an unknown name; the 
 `segmentToSphere` for a zero-length segment (keep "no hit"). In each case the Go server should do what the
 original does when the input is valid, and reject/clamp otherwise.
 
+Deviations implemented so far (milestone 1, `server/internal/game`):
+
+| Deviation | Why |
+|---|---|
+| `set sv_password ""` in the cvar dump, never the password | The original sent it in clear to every client (§2.6). |
+| Messages naming a player that isn't the sender's own are ignored (`Options.BindPlayerID`, default on) | §1.4: a client could act for any player. |
+| Client-supplied player IDs outside 0..31, weapon IDs outside the table (with `sv_validateWeapons` off), team requests outside −1..2 are refused | The original indexed its arrays with them. |
+| Map downloads serve only plain names found in the map folder, case-insensitively; a missing file ends the transfer | Path traversal and `fclose(NULL)` (§2.3). |
+| `PLAYER_ENUM_STATE` skin bytes after the string are zeros | The original sent uninitialised memory. |
+| Champion spawn index clamped at `size-1` | The original's `> size` test let `size` through (§5.9). |
+| The console `set` sends the formatted value after validation | The original broadcast the raw command line before validating it (§2.6). |
+
 ---
 
 ## 9. The master server (game list)
@@ -1275,7 +1287,9 @@ through a command channel processed at the start of a frame (like console input)
 
 ### 10.2 Milestones
 
-1. **Wire + handshake + presence.** `proto` with golden tests for every struct; transport; session loop;
+Status (October 2026): milestone 1 is done (`server/`); the rest is to do.
+
+1. **[done] Wire + handshake + presence.** `proto` with golden tests for every struct; transport; session loop;
    connect/disconnect events; the handshake and state dump (§2.2); ping/pong (§5.11); chat; name/skin;
    team requests; spawn requests with DM spawn selection; coord-frame interpolation and broadcast (§2.5);
    map download. *Done when:* two openbv clients join a Go DM session, see each other move and chat.
