@@ -17,7 +17,7 @@ import (
 func refVec(v reftest.V) bvmath.Vec3 { return bvmath.Vec3(v.Vec()) }
 
 func bits(v bvmath.Vec3) [3]uint32 {
-	return [3]uint32{math.Float32bits(v[0]), math.Float32bits(v[1]), math.Float32bits(v[2])}
+	return [3]uint32{fbits(v[0]), fbits(v[1]), fbits(v[2])}
 }
 
 // The projectiles against the original Projectile::update (reftest/cpp/proj_main.cpp): 700 random
@@ -252,4 +252,13 @@ func TestCollisionAgainstOriginal(t *testing.T) {
 		}
 	}
 	t.Logf("%d collision cases, %d pushed back", len(g.Collision), moved)
+}
+
+// fbits is a float's bits with every NaN the same: x86-64 and arm64 make NaNs with different signs and
+// payloads (the golden data comes from whichever machine generated it), and a NaN is a NaN to the game.
+func fbits(f float32) uint32 {
+	if f != f {
+		return 0x7fc00000
+	}
+	return math.Float32bits(f)
 }
