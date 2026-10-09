@@ -16,7 +16,7 @@ foreach ($a in $args) {
 }
 $run = Join-Path $here 'gasm-run.exe'
 $cmd = @((Join-Path $here 'openbv.wasm'), '--asset-dir', (Join-Path $here 'data'), '--storage-id', 'openbv',
-  '--allow-net=127.0.0.1,localhost', '--window', '1600x900', '--icon', (Join-Path $here 'openbv.png')) + $pass
+  '--allow-net=127.0.0.1,localhost,api.openbv.emdzej.pl', '--window', '1600x900', '--icon', (Join-Path $here 'openbv.png')) + $pass
 if ($dry) {
   Write-Output ("`"$run`" " + (($cmd | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } }) -join ' '))
   exit 0

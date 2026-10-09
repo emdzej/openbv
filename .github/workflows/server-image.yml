@@ -1,0 +1,65 @@
+name: Server image
+
+# The game server's image on every push to main that touches it: ghcr.io/emdzej/openbv-server tagged
+# sha-<short> (what mnmsy-infra's components/apps/openbv-api pins; never deploy a moving tag) and main.
+# amd64 and arm64. Release tags push <version> and latest from release.yml.
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', 'tools/fetch-content.sh', '.github/workflows/server-image.yml']
+
+concurrency:
+  group: server-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: fetch the content (the map tests load every map)
+        run: tools/fetch-content.sh
+      - name: vet and test
+        working-directory: server
+        env:
+          OPENBV_TEST_CONTENT: ${{ github.workspace }}/.deps/content
+        run: |
+          go vet ./...
+          test -z "$(gofmt -l .)"
+          go test -count=1 ./...
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: tag
+        id: tag
+        run: echo "short=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ steps.tag.outputs.short }}
+          tags: |
+            ghcr.io/emdzej/openbv-server:${{ steps.tag.outputs.short }}
+            ghcr.io/emdzej/openbv-server:main
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=openbv's game server (Babo Violent 2 sessions, master, admin page)
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server

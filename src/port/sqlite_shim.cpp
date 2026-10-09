@@ -290,17 +290,21 @@ namespace
 		bc->rows.push_back(r);
 	}
 
-	// The master server bv2.db lists (RndLabs', 78.46.36.43) is gone. The game reaches the one given
-	// as the launch parameter master=host:port instead (the game port; the table holds it plus 1000,
-	// see CMaster::GetMasterInfos), or none: an empty address, which baboNet refuses at once.
+	// The master server bv2.db lists (RndLabs', 78.46.36.43) is gone. The game reaches openbv's
+	// (wss://api.openbv.emdzej.pl/master) instead, or the one given as the launch parameter master:
+	// host:port (the port the master listens on; the table holds it plus 1000, see
+	// CMaster::GetMasterInfos), a ws:// or wss:// URL (baboNet takes it as it is, babonet_gasm.cpp), or
+	// empty for none (an empty address, which baboNet refuses at once).
 	std::vector<Row> masterServers(const Table &t)
 	{
 		char value[256] = "";
-		gasm_param_str("master", value, sizeof(value));
+		if (gasm_param_str("master", value, sizeof(value)) < 0)
+			snprintf(value, sizeof(value), "%s", "wss://api.openbv.emdzej.pl/master");
 		std::string host = value;
 		int port = 0;
+		bool url = host.compare(0, 5, "ws://") == 0 || host.compare(0, 6, "wss://") == 0;
 		size_t colon = host.rfind(':');
-		if (colon != std::string::npos) { port = atoi(host.c_str() + colon + 1); host = host.substr(0, colon); }
+		if (!url && colon != std::string::npos) { port = atoi(host.c_str() + colon + 1); host = host.substr(0, colon); }
 		Row r(t.columns.size());
 		for (size_t c = 0; c < t.columns.size(); c++)
 		{

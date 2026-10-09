@@ -28,12 +28,15 @@ func (t TokenAuth) Verify(_ context.Context, bearer string) (string, error) {
 	return "token", nil
 }
 
-// OIDCAuth verifies access tokens from an OpenID Connect provider (OIDC_ISSUER): issued to ClientID
-// (the admin page's public client) and carrying Role, as a flat "roles" claim, a realm role or a role
-// of the client (Keycloak's layouts; as ../nowhereinparticular's support desk). The provider's keys
-// are fetched on first use, so the server starts even if the issuer is briefly away.
+// OIDCAuth verifies access tokens from an OpenID Connect provider (OIDC_ISSUER; in the cluster
+// auth.solvely.pl, realm solvely), as nowhereinparticular's support desk does: issued to ClientID (the
+// admin page's public client, which owns the role) or to one of Agents (confidential clients with a
+// service account, for tools and agents: client credentials with scope openid), and carrying Role, as a
+// flat "roles" claim (the realm's mapper), a role of ClientID or a realm role. The provider's keys are
+// fetched on first use, so the server starts even if the issuer is briefly away.
 type OIDCAuth struct {
 	Issuer, ClientID, Role string
+	Agents                 []string
 
 	mu       sync.Mutex
 	verifier *oidc.IDTokenVerifier
@@ -77,10 +80,11 @@ func (a *OIDCAuth) Verify(ctx context.Context, bearer string) (string, error) {
 	if err := tok.Claims(&c); err != nil {
 		return "", ErrForbidden
 	}
-	if c.Azp != a.ClientID && !slices.Contains(tok.Audience, a.ClientID) {
+	if c.Azp != a.ClientID && !slices.Contains(a.Agents, c.Azp) && !slices.Contains(tok.Audience, a.ClientID) {
 		return "", ErrForbidden
 	}
-	if a.Role != "" && !slices.Contains(c.Roles, a.Role) && !slices.Contains(c.RealmAccess.Roles, a.Role) &&
+	// the role is required: a token from the realm alone isn't enough
+	if a.Role == "" || !slices.Contains(c.Roles, a.Role) && !slices.Contains(c.RealmAccess.Roles, a.Role) &&
 		!slices.Contains(c.ResourceAccess[a.ClientID].Roles, a.Role) {
 		return "", ErrForbidden
 	}

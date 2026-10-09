@@ -20,7 +20,7 @@
 ```
 
 `WINDOW=1920x1080` sets the window's size (default 1600x900; it can be resized), `NET=host,...` the
-hosts the game may reach without asking (default `127.0.0.1,localhost`).
+hosts the game may reach without asking (default `127.0.0.1,localhost,api.openbv.emdzej.pl`).
 
 ## CMake
 

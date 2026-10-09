@@ -97,7 +97,7 @@ if [[ "$FRESH" == 1 ]]; then
 fi
 
 cmd=("$RUN" build-gasm/openbv.wasm --asset-dir "$DATA" ${storage[@]+"${storage[@]}"}
-  --allow-net="${NET:-127.0.0.1,localhost}" --window "${WINDOW:-1600x900}" ${pass[@]+"${pass[@]}"})
+  --allow-net="${NET:-127.0.0.1,localhost,api.openbv.emdzej.pl}" --window "${WINDOW:-1600x900}" ${pass[@]+"${pass[@]}"})
 echo "playing: data $DATA, saves '$STORAGE'"
 if [[ -n "${LOG:-}" ]]; then
   "${cmd[@]}" 2>&1 | tee "$LOG"

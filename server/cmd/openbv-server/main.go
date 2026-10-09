@@ -11,6 +11,7 @@
 //	OIDC_ISSUER           an OpenID Connect provider for the admin page (e.g. a Keycloak realm URL)
 //	OIDC_CLIENT_ID        the page's public client there
 //	OIDC_ROLE             the role an admin needs (a realm role, a client role or a flat "roles" claim)
+//	OIDC_AGENT_CLIENTS    confidential clients (client credentials) whose tokens are accepted too, with the role
 //	OPENBV_MASTER_PORT    the master's own port, as the game's master=host:port names it (10207; 0: none,
 //	                      only /master on OPENBV_LISTEN)
 //	OPENBV_MASTER_REGISTER  "1": other servers may list themselves with this master
@@ -133,7 +134,16 @@ func run(log *slog.Logger) error {
 	var auth admin.AnyAuth
 	cfg := admin.Config{Auth: "token"}
 	if iss := os.Getenv("OIDC_ISSUER"); iss != "" {
-		auth = append(auth, &admin.OIDCAuth{Issuer: iss, ClientID: os.Getenv("OIDC_CLIENT_ID"), Role: os.Getenv("OIDC_ROLE")})
+		var agents []string
+		for _, c := range strings.Split(os.Getenv("OIDC_AGENT_CLIENTS"), ",") {
+			if c = strings.TrimSpace(c); c != "" {
+				agents = append(agents, c)
+			}
+		}
+		if os.Getenv("OIDC_ROLE") == "" {
+			return errors.New("OIDC_ROLE is needed with OIDC_ISSUER: without a role, anyone in the realm would be an admin")
+		}
+		auth = append(auth, &admin.OIDCAuth{Issuer: iss, ClientID: os.Getenv("OIDC_CLIENT_ID"), Role: os.Getenv("OIDC_ROLE"), Agents: agents})
 		cfg = admin.Config{Auth: "oidc", Issuer: iss, ClientID: os.Getenv("OIDC_CLIENT_ID")}
 	}
 	if tok := os.Getenv("OPENBV_ADMIN_TOKEN"); tok != "" {
@@ -144,7 +154,10 @@ func run(log *slog.Logger) error {
 	}
 
 	mux := http.NewServeMux()
+	// probes (the cluster's reach the pod directly; not routed by the ingress)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ready\n")) })
+	mux.HandleFunc("GET /version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(version + "\n")) })
 	mux.HandleFunc("GET /bv2/{id}", func(w http.ResponseWriter, r *http.Request) { mgr.ServeSession(r.PathValue("id"), w, r) })
 	mux.HandleFunc("GET /bv2/port/{port}", func(w http.ResponseWriter, r *http.Request) {
 		port, err := strconv.Atoi(r.PathValue("port"))

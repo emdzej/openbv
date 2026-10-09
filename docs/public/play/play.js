@@ -3,7 +3,8 @@
 // copied in by docs/scripts/copy-content.sh). Loosely after gasm's own player (runners/web/app.js).
 //
 // Query parameters:
-//   master=HOST:PORT  the master server (the online game list); none by default
+//   master=HOST:PORT  the master server (the online game list): a host:port or wss:// URL; openbv's
+//                     (wss://api.openbv.emdzej.pl/master) by default, master= (empty) for none
 //   hashframes=N      run N frames on virtual time with the null GL and in-memory storage, then print the
 //                     hash line gasm-run --headless N prints (globalThis.__openbvResult)
 //   input=SCRIPT      with hashframes: scripted input, gasm-run's --input syntax
@@ -18,7 +19,7 @@ const HASH_FRAMES = Number(query.get('hashframes') || 0);
 // headless runs' drawable (gasm-run --headless): the same size, so scripted pointer positions match
 const HEADLESS_SIZE = [1280, 720];
 // hosts the game may reach without asking: a server on this machine (none in the browser yet)
-const ALLOW_NET = ['127.0.0.1', 'localhost'];
+const ALLOW_NET = ['127.0.0.1', 'localhost', 'api.openbv.emdzej.pl'];
 
 const canvas = $('screen');
 let host = null, running = false, rafId = 0, assets = null, wasm = null, gl = null;

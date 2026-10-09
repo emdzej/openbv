@@ -388,7 +388,17 @@ UINT4 bb_clientConnect(const char *HostIP, unsigned short Port)
 	else
 	{
 		char url[512];
-		if (strncmp(HostIP, "ws://", 5) == 0 || strncmp(HostIP, "wss://", 6) == 0) snprintf(url, sizeof(url), "%s", HostIP);
+		if (strncmp(HostIP, "ws://", 5) == 0 || strncmp(HostIP, "wss://", 6) == 0)
+		{
+			// A URL is used as it is, except the master's (".../master"): the Game Browser joins a game
+			// it lists at the master's host (CMaster::gameHost) with the game's port, and openbv's server
+			// serves its sessions by port at /bv2/port/<port> next to /master.
+			size_t n = strlen(HostIP);
+			if (Port && n >= 7 && strcmp(HostIP + n - 7, "/master") == 0)
+				snprintf(url, sizeof(url), "%.*s/bv2/port/%u", (int)(n - 7), HostIP, (unsigned)Port);
+			else
+				snprintf(url, sizeof(url), "%s", HostIP);
+		}
 		else snprintf(url, sizeof(url), "ws://%s:%u/", HostIP, (unsigned)Port);
 		c->ws = gasm_net_open(url, (uint32_t)strlen(url));
 		if (c->ws <= 0)

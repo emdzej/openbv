@@ -22,7 +22,7 @@ for a in "$@"; do
 done
 # shellcheck disable=SC2054  # the comma is gasm-run's host list
 cmd=("$HERE/gasm-run" "$RES/openbv.wasm" --asset-dir "$RES/data" --storage-id openbv
-  --allow-net=127.0.0.1,localhost --window 1600x900 ${args[@]+"${args[@]}"})
+  --allow-net=127.0.0.1,localhost,api.openbv.emdzej.pl --window 1600x900 ${args[@]+"${args[@]}"})
 if [ "$DRY" = 1 ]; then printf '%q ' "${cmd[@]}"; echo; exit 0; fi
 if [ ! -t 1 ] && [ "${OPENBV_NO_LOG:-0}" != 1 ]; then
   LOG="$HOME/Library/Logs/OpenBV"; mkdir -p "$LOG"
