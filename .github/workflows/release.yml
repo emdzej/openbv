@@ -1,0 +1,192 @@
+name: Release
+
+# Triggered by plain semver tags (no "v" prefix) equal to project(OpenBV VERSION ...) in CMakeLists.txt:
+# `git tag 0.1.0 && git push origin 0.1.0`. Builds openbv-<version>.wasm and the gasm bundles (openbv.wasm,
+# the vanilla 2.11 content from tools/fetch-content.sh and the released gasm-run, GASM_VERSION in
+# tools/fetch-gasm-sdk.sh) for macOS, Linux x86_64/arm64 and Windows x86_64, smoke-tests each bundle on its
+# own OS (600 headless frames, the expected hashes), and attaches everything (with SHA-256 files) to a
+# GitHub Release. workflow_dispatch builds the same files as artifacts only (0.0.0-snapshot.<sha>).
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # to create the Release and upload assets
+
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: version
+        id: ver
+        run: |
+          project=$(sed -n 's/^project(OpenBV VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            v="$GITHUB_REF_NAME"
+            [ "$v" = "$project" ] || { echo "tag $v differs from project(OpenBV VERSION $project) in CMakeLists.txt" >&2; exit 1; }
+          else
+            v="0.0.0-snapshot.${GITHUB_SHA::7}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: fetch wasi-sdk and the gasm C SDK
+        run: tools/fetch-gasm-sdk.sh
+
+      - name: build openbv.wasm
+        run: |
+          cmake -S . -B build-gasm -DOPENBV_PLATFORM=gasm -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=.deps/gasm-c-sdk/cmake/gasm-toolchain.cmake -DWASI_SDK_PREFIX="$PWD/.deps/wasi-sdk"
+          cmake --build build-gasm -j
+          name="openbv-${{ steps.ver.outputs.version }}.wasm"
+          cp build-gasm/openbv.wasm "$name"
+          sha256sum "$name" > "$name.sha256"
+          ls -l "$name"
+
+      - name: fetch the content
+        run: tools/fetch-content.sh
+
+      - name: play 600 frames headless (expected hashes)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libasound2t64
+          tools/headless-check.sh "$(tools/fetch-gasm-runner.sh linux-x86_64)/gasm-run" build-gasm/openbv.wasm .deps/content
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: openbv-wasm
+          path: openbv-*.wasm*
+          retention-days: 14
+
+  gasm-macos:
+    needs: wasm
+    runs-on: macos-latest   # iconutil, codesign (ad hoc)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: openbv-wasm
+          path: wasm
+      - name: package
+        run: |
+          v="${{ needs.wasm.outputs.version }}"
+          OPENBV_WASM="wasm/openbv-$v.wasm" tools/package-gasm.sh "$v" macos-universal \
+            "$(tools/fetch-gasm-runner.sh macos-universal)" dist
+      - name: smoke test
+        run: tools/smoke-gasm-bundle.sh dist/openbv-gasm-*-macos-universal.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: openbv-gasm-macos-universal
+          path: dist/openbv-gasm-*.zip*
+          retention-days: 14
+
+  gasm-package:
+    needs: wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: openbv-wasm
+          path: wasm
+      - name: package (Linux x86_64 and arm64, Windows x86_64)
+        run: |
+          v="${{ needs.wasm.outputs.version }}"
+          for p in linux-x86_64 linux-arm64 windows-x86_64; do
+            OPENBV_WASM="wasm/openbv-$v.wasm" tools/package-gasm.sh "$v" "$p" "$(tools/fetch-gasm-runner.sh "$p")" "dist/$p"
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: openbv-gasm-linux-x86_64
+          path: dist/linux-x86_64/*
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        with:
+          name: openbv-gasm-linux-arm64
+          path: dist/linux-arm64/*
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        with:
+          name: openbv-gasm-windows-x86_64
+          path: dist/windows-x86_64/*
+          retention-days: 14
+
+  gasm-smoke-linux:
+    needs: gasm-package
+    strategy:
+      matrix:
+        include:
+          - { arch: x86_64, os: ubuntu-latest }
+          - { arch: arm64, os: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: openbv-gasm-linux-${{ matrix.arch }}
+          path: dist
+      - name: runtime libraries (ALSA)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libasound2t64
+      - name: smoke test
+        run: tools/smoke-gasm-bundle.sh dist/openbv-gasm-*-linux-${{ matrix.arch }}.tar.gz
+
+  gasm-smoke-windows:
+    needs: gasm-package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: openbv-gasm-windows-x86_64
+          path: dist
+      - name: smoke test
+        shell: pwsh
+        env:
+          OPENBV_NO_PAUSE: '1'
+        run: |
+          $zip = Get-ChildItem dist/openbv-gasm-*-windows-x86_64.zip | Select-Object -First 1
+          Expand-Archive $zip.FullName -DestinationPath unpacked
+          $d = (Get-ChildItem unpacked -Directory | Select-Object -First 1).FullName
+          foreach ($f in 'gasm-run.exe', 'libEGL.dll', 'libGLESv2.dll', 'openbv.wasm', 'OpenBV.cmd', 'openbv.ps1', 'openbv.png',
+                         'README.txt', 'LICENSE.txt', 'LICENSE-gasm.txt', 'THIRD-PARTY.txt', 'data\bv2.db', 'data\main\License.txt') {
+            if (-not (Test-Path (Join-Path $d $f))) { throw "missing $f" }
+          }
+          $n = (Get-ChildItem (Join-Path $d 'data') -Recurse -File).Count
+          if ($n -ne 328) { throw "content: $n files, expected 328" }
+          $env:APPDATA = Join-Path $PWD 'appdata'
+          $help = & "$d\OpenBV.cmd" --help | Out-String
+          if ($LASTEXITCODE -ne 0 -or $help -notmatch 'OpenBV') { throw '--help' }
+          $cmd = & "$d\OpenBV.cmd" --dry-run --param master=example.org:3333 | Out-String
+          $cmd
+          if ($LASTEXITCODE -ne 0 -or $cmd -notmatch '--asset-dir' -or $cmd -notmatch 'master=example.org:3333') { throw 'dry run' }
+          # 600 headless frames through the launcher: the expected hash line (tools/headless-check.sh).
+          $expected = (Select-String -Path tools/headless-check.sh -Pattern '^EXPECTED="(.*)"').Matches[0].Groups[1].Value
+          $out = & "$d\OpenBV.cmd" --headless 600 --mute 2>&1 | Out-String
+          if ($out -notmatch [regex]::Escape($expected)) { $out; throw "headless run: expected $expected" }
+          $global:LASTEXITCODE = 0
+          'PASS'
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [wasm, gasm-macos, gasm-package, gasm-smoke-linux, gasm-smoke-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" artifacts/*
+          --title "OpenBV $GITHUB_REF_NAME"
+          --generate-notes
+          --notes-file .github/release-notes.md

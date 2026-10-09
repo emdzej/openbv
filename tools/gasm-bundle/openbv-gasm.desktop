@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Babo Violent 2 (OpenBV)
+GenericName=Action game
+Comment=OpenBV: Babo Violent 2 on gasm
+Exec="@DIR@/openbv.sh"
+Icon=@DIR@/openbv.png
+StartupWMClass=openbv
+Terminal=false
+Categories=Game;ActionGame;

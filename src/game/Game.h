@@ -157,7 +157,7 @@ struct FloorMark
 	{
 		delay = 0;
 	}
-	void set(CVector3f & pposition, float pangle, float psize, float pdelay, float pstartDelay, unsigned int ptexture, CVector4f pcolor)
+	void set(const CVector3f & pposition, float pangle, float psize, float pdelay, float pstartDelay, unsigned int ptexture, CVector4f pcolor)
 	{
 		position = pposition;
 		angle = pangle;
@@ -354,7 +354,7 @@ struct Trail
 	int trailType;
 	CVector4f color;
 	CVector3f right;
-	Trail(CVector3f & pP1, CVector3f & pP2, float pSize, CVector4f & pColor, float duration, int in_trailType=0)
+	Trail(const CVector3f & pP1, const CVector3f & pP2, float pSize, const CVector4f & pColor, float duration, int in_trailType=0)
 	{
 		trailType = in_trailType;
 		dis = distance(pP1, pP2);
@@ -686,7 +686,7 @@ public:
 #ifdef _PRO_
 	void spawnBloodMinibot(CVector3f & position, float damage);
 #endif
-	void spawnExplosion(CVector3f & position, CVector3f & normal, float size);
+	void spawnExplosion(const CVector3f & position, const CVector3f & normal, float size);
 
 	// Pour afficher la minimap (ouff, je mélange pomal les affaires, tk)
 	void renderMiniMap();

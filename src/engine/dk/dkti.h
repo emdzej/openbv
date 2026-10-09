@@ -6,6 +6,8 @@
 
 
 
+
+#include "openbv_link.h"
 #include "platform_types.h"
 
 #ifdef WIN32
@@ -89,7 +91,7 @@ DLL_API void			 dktDeleteTexture(unsigned int *textureID);
 DLL_API char*		 dktGetLastError();
 DLL_API int			 dktGetTextureBytePerPixel(unsigned int textureID);
 DLL_API void			 dktGetTextureData(unsigned int textureID, unsigned char * data);
-DLL_API CVector2i				 dktGetTextureSize(unsigned int textureID);
+DLL_API CVector2i				 dktGetTextureSize(unsigned int textureID) OPENBV_LINK(dktGetTextureSize);
 DLL_API void			 dktInit();
 DLL_API void			 dktRenderToTexture(unsigned int textureID, int x, int y, int w, int h, unsigned int internalFormat);
 DLL_API void			 dktShutDown();

@@ -533,7 +533,7 @@ CVector3f		 dkglUnProject(CVector2i & pos2D, float zRange)
 }
 
 
-CVector3f		 dkglProject(CVector3f & pos3D)
+CVector3f		 dkglProject(const CVector3f & pos3D)
 {
 	double x,y,z;
 #ifndef _DX_

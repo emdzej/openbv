@@ -46,12 +46,12 @@ unsigned int CDkp::lastTexture = 0;
 //
 // Pour créer une billboard static (mais trié comme les particule) pour faire du gazon à terre surtout
 //
-void			dkpCreateBillboard(	CVector3f & positionFrom,
-									CVector3f & positionTo,
+void			dkpCreateBillboard(	const CVector3f & positionFrom,
+									const CVector3f & positionTo,
 									float fadeSpeed,
 									float fadeOutDistance,
 									float size,
-									CColor4f & color,
+									const CColor4f & color,
 									unsigned int textureID,
 									unsigned int srcBlend,
 									unsigned int dstBlend)
@@ -140,9 +140,9 @@ void			dkpCreateParticle(	float *position,
 //
 // Pour créer une particle avec plein d'information de random dessus
 //
-void			dkpCreateParticleEx(CVector3f & positionFrom,
-									CVector3f & positionTo,
-									CVector3f & direction,
+void			dkpCreateParticleEx(const CVector3f & positionFrom,
+									const CVector3f & positionTo,
+									const CVector3f & direction,
 									float speedFrom,
 									float speedTo,
 									float pitchFrom,
@@ -153,10 +153,10 @@ void			dkpCreateParticleEx(CVector3f & positionFrom,
 									float endSizeTo,
 									float durationFrom,
 									float durationTo,
-									CColor4f & startColorFrom,
-									CColor4f & startColorTo,
-									CColor4f & endColorFrom,
-									CColor4f & endColorTo,
+									const CColor4f & startColorFrom,
+									const CColor4f & startColorTo,
+									const CColor4f & endColorFrom,
+									const CColor4f & endColorTo,
 									float angleFrom,
 									float angleTo,
 									float angleSpeedFrom,

@@ -49,6 +49,8 @@
 #define DKF_H
 
 
+
+#include "openbv_link.h"
 #include "CVector.h"
 
 
@@ -98,7 +100,7 @@ void			dkfDeleteFont(unsigned int *ID);
 /// \param text chaine de caractères à considérer
 /// \param caracter caractère dont la position sera retourner
 /// \return position de la première occurence du caractère dans la chaine de caractères à considérer
-CPoint2f		dkfGetCaracterPos(float size, char *text, int caracter);
+CPoint2f		dkfGetCaracterPos(float size, char *text, int caracter) OPENBV_LINK(dkfGetCaracterPos);
 
 
 
@@ -110,7 +112,7 @@ CPoint2f		dkfGetCaracterPos(float size, char *text, int caracter);
 /// \param text chaine de caractères à considérer
 /// \param onStringPos position cible en pixel dont l'origine se trouve dans le coin supérieur gauche du premier caractère
 /// \return le n ième caractère d'une chaine de caractères qui se trouve à la position onStringPos
-int				dkfGetOverStringCaracter(float size, char *text, CPoint2f & onStringPos);
+int				dkfGetOverStringCaracter(float size, char *text, CPoint2f & onStringPos) OPENBV_LINK(dkfGetOverStringCaracter);
 
 
 

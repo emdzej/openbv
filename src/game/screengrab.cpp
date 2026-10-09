@@ -24,13 +24,29 @@
 #include "Game.h"
 #include "Player.h"
 #include "Scene.h"
-#include <GL\gl.h>
+#include <GL/gl.h>
 #include <time.h>
 #include <stdio.h>
 
 
 extern Scene* scene;
 
+#ifdef OPENBV_GASM
+// openbv: the Win32 BMP writer below, with stdio: the same 14-byte file header and 40-byte
+// BITMAPINFOHEADER, then the pixels as read (bottom-up BGRA).
+static void putLE(FILE *f, unsigned v, int bytes) { for (int i = 0; i < bytes; i++) fputc((v >> (8 * i)) & 0xff, f); }
+void SaveBitmapToFile( unsigned char* pBitmapBits, int lWidth, int lHeight, int wBitsPerPixel, const char* lpszFileName )
+{
+    unsigned imageSize = lWidth * lHeight * (wBitsPerPixel / 8);
+    FILE *f = fopen(lpszFileName, "wb");
+    if (!f) return;
+    putLE(f, 0x4D42, 2); putLE(f, 14 + 40 + imageSize, 4); putLE(f, 0, 4); putLE(f, 14 + 40, 4);
+    putLE(f, 40, 4); putLE(f, lWidth, 4); putLE(f, lHeight, 4); putLE(f, 1, 2); putLE(f, wBitsPerPixel, 2);
+    putLE(f, 0, 4); putLE(f, imageSize, 4); putLE(f, 0, 4); putLE(f, 0, 4); putLE(f, 0, 4); putLE(f, 0, 4);
+    fwrite(pBitmapBits, 1, imageSize, f);
+    fclose(f);
+}
+#else
 void SaveBitmapToFile( BYTE* pBitmapBits, LONG lWidth, LONG lHeight,WORD wBitsPerPixel, LPCTSTR lpszFileName )
 {
     BITMAPINFOHEADER bmpInfoHeader = {0};
@@ -85,6 +101,7 @@ void SaveBitmapToFile( BYTE* pBitmapBits, LONG lWidth, LONG lHeight,WORD wBitsPe
     // Close the file handle
     CloseHandle( hFile );
 }
+#endif
 
 bool SaveScreenGrabAuto() 
 {

@@ -69,6 +69,11 @@ int createThread(unsigned long (*pFuncter)(void*), void * pParam, unsigned long 
 			SetThreadPriority(hThread, THREAD_PRIORITY_HIGHEST);
 			break;
 		}
+	#elif defined(OPENBV_GASM)
+		// openbv: gasm guests have one thread; the work runs to completion here, inside start().
+		pThreadID = 1;
+		pFuncter(pParam);
+		return 1;
 	#else
 		// We create the thread using POSIX thread system (Linux)
 		pthread_t threadID = 0;
@@ -147,7 +152,7 @@ void CThread::run(void * pArg)
 	execute(pArg);
 	mIsRunning = false;
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(OPENBV_GASM)
 	pthread_detach(mThreadId);
 	pthread_exit(0);
 #endif

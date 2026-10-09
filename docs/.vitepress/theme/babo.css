@@ -1,0 +1,151 @@
+/* openbv theme, sampled from Babo Violent 2's main menu: the blue panel (#0a5fd6) with its darker
+   frame (#063a8c), the glossy menu buttons (#5b93e2 to #1d4fa6), the orange of a selected list item
+   (#c8781c, #e8a04a when hovered), the olive tooltip (#7f7c58) and the black around it all.
+   Light mode is the panel's blue on a pale sky; dark mode is the menu itself: black with the blue
+   and the orange as accents. */
+
+:root {
+  --bv-panel: #0a5fd6;
+  --bv-frame: #063a8c;
+  --bv-button-top: #5b93e2;
+  --bv-button-bottom: #1d4fa6;
+  --bv-select: #c8781c;
+  --bv-select-hover: #e8a04a;
+  --bv-tooltip: #7f7c58;
+  --bv-red: #d6342c;
+  --bv-blue: #2c68e2;
+
+  --vp-c-brand-1: #0b4fb8;
+  --vp-c-brand-2: #0a5fd6;
+  --vp-c-brand-3: #0a5fd6;
+  --vp-c-brand-soft: rgba(10, 95, 214, 0.12);
+
+  --vp-c-bg: #f7faff;
+  --vp-c-bg-alt: #ebf2fd;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg-soft: #e3edfc;
+  --vp-c-divider: #cddcf3;
+  --vp-c-gutter: #cddcf3;
+  --vp-c-text-1: #0d1a30;
+  --vp-c-text-2: #3e4f6c;
+
+  --vp-c-tip-1: #0b4fb8;
+  --vp-c-tip-2: #0a5fd6;
+  --vp-c-tip-3: #0a5fd6;
+  --vp-c-tip-soft: rgba(10, 95, 214, 0.1);
+  --vp-c-warning-1: #8f520c;
+  --vp-c-warning-2: #a8620f;
+  --vp-c-warning-3: #c8781c;
+  --vp-c-warning-soft: rgba(200, 120, 28, 0.14);
+  --vp-c-danger-1: #b3241d;
+  --vp-c-danger-2: #c92b23;
+  --vp-c-danger-3: #d6342c;
+  --vp-c-danger-soft: rgba(214, 52, 44, 0.1);
+
+  /* Buttons: the menu's glossy blue, the alternative the selection's orange outline. */
+  --vp-button-brand-bg: var(--bv-button-bottom);
+  --vp-button-brand-hover-bg: var(--bv-panel);
+  --vp-button-brand-active-bg: var(--bv-frame);
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-active-text: #ffffff;
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-active-border: transparent;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(180deg, #5b93e2 0%, #0a5fd6 55%, #063a8c 100%);
+}
+
+.dark {
+  --vp-c-brand-1: #6aa5f4;
+  --vp-c-brand-2: #4d8fea;
+  --vp-c-brand-3: #0a5fd6;
+  --vp-c-brand-soft: rgba(77, 143, 234, 0.16);
+
+  --vp-c-bg: #07090e;
+  --vp-c-bg-alt: #0c1018;
+  --vp-c-bg-elv: #111723;
+  --vp-c-bg-soft: #121a29;
+  --vp-c-divider: #1d2a40;
+  --vp-c-gutter: #05070b;
+  --vp-c-text-1: #e7edf7;
+  --vp-c-text-2: #9fb0c9;
+
+  --vp-c-tip-1: #6aa5f4;
+  --vp-c-tip-2: #4d8fea;
+  --vp-c-tip-3: #0a5fd6;
+  --vp-c-tip-soft: rgba(77, 143, 234, 0.14);
+  --vp-c-warning-1: #e8a04a;
+  --vp-c-warning-2: #d58a2e;
+  --vp-c-warning-3: #c8781c;
+  --vp-c-warning-soft: rgba(200, 120, 28, 0.16);
+
+  --vp-home-hero-name-background: linear-gradient(180deg, #a9cbf8 0%, #5b93e2 45%, #0a5fd6 100%);
+}
+
+/* The glossy look of the game's menu buttons on the brand button. */
+.VPButton.brand {
+  background-image: linear-gradient(180deg, var(--bv-button-top) 0%, var(--bv-button-bottom) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.VPButton.brand:hover {
+  background-image: linear-gradient(180deg, #74a6ea 0%, var(--bv-panel) 100%);
+}
+/* The alternative buttons: a selected list item's orange. */
+.VPButton.alt:hover {
+  border-color: var(--bv-select);
+  color: var(--bv-select);
+}
+.dark .VPButton.alt:hover {
+  border-color: var(--bv-select-hover);
+  color: var(--bv-select-hover);
+}
+
+/* The home page's background: tools/site-bg/babos.c, a gasm game (components/BabosBackground.vue).
+   Behind the hero, fainter behind the text column on the left and towards the bottom (the feature
+   cards), so the headline stays readable; clicks pass through. */
+.VPHome { position: relative; }
+.VPHero { position: relative; z-index: 1; }
+.openbv-babos-bg {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 600px;   /* the hero's height, set by the component */
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.9;
+  -webkit-mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.35) 35%, #000 65%), linear-gradient(to bottom, #000 93%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.35) 35%, #000 65%), linear-gradient(to bottom, #000 93%, transparent 100%);
+  mask-composite: intersect;
+}
+.openbv-babos-bg canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* The "Built for gasm" badge: gasm's own artwork, light or dark by theme (never recoloured). */
+.gasm-badge img { display: inline; }
+.gasm-badge-dark { display: none !important; }
+.dark .gasm-badge-light { display: none !important; }
+.dark .gasm-badge-dark { display: inline !important; }
+
+/* Screenshots */
+.shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.shots figure { margin: 0; }
+.shots img {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--vp-c-divider);
+}
+.shots figcaption {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+  margin-top: 6px;
+}

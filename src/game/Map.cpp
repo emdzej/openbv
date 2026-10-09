@@ -27,7 +27,9 @@
 #include "CRain.h"
 #include "CSnow.h"
 #include "CLava.h"
+#ifdef WIN32
 #include <direct.h>
+#endif
 #include <algorithm>
 #endif
 

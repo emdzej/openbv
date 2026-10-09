@@ -28,10 +28,10 @@
 // Constructeur / Destructeur
 //
 CParticle::CParticle(
-		float *mposition,
-		float *mvel,
-		float *mstartColor,
-		float *mendColor,
+		const float *mposition,
+		const float *mvel,
+		const float *mstartColor,
+		const float *mendColor,
 		float mstartSize,
 		float mendSize,
 		float mduration,

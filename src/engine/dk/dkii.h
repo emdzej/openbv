@@ -24,6 +24,8 @@
 
 
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 #ifndef DLL_EXPORTS
 #define DLL_API __declspec(dllexport)
@@ -58,16 +60,16 @@
 // Les fonction du DKI
 DLL_API int				dkiGetFirstDown();
 DLL_API int				dkiGetMouseWheelVel();
-DLL_API CVector2i		dkiGetMouse();
-DLL_API CVector2i		dkiGetMouseVel();
+DLL_API CVector2i		dkiGetMouse() OPENBV_LINK(dkiGetMouse);
+DLL_API CVector2i		dkiGetMouseVel() OPENBV_LINK(dkiGetMouseVel);
 DLL_API int				dkiGetState(int inputID);
-DLL_API CVector3f		dkiGetJoy();
-DLL_API CVector3f		dkiGetJoyR();
-DLL_API CVector3f		dkiGetJoyVel();
+DLL_API CVector3f		dkiGetJoy() OPENBV_LINK(dkiGetJoy);
+DLL_API CVector3f		dkiGetJoyR() OPENBV_LINK(dkiGetJoyR);
+DLL_API CVector3f		dkiGetJoyVel() OPENBV_LINK(dkiGetJoyVel);
 DLL_API int				dkiInit(HINSTANCE appInstance, HWND appHandle);
 DLL_API void			dkiShutDown();
 DLL_API void			dkiUpdate(float elapsef, int width, int height);
-DLL_API void			dkiSetMouse(CVector2i & mousePos);
+DLL_API void			dkiSetMouse(CVector2i & mousePos) OPENBV_LINK(dkiSetMouse);
 
 
 

@@ -46,6 +46,8 @@
 #define DKT_H
 
 
+
+#include "openbv_link.h"
 #include "CVector.h"
 
 
@@ -210,7 +212,7 @@ void			 dktGetTextureData(unsigned int textureID, unsigned char * data);
 ///
 /// \param textureID identifiant unique de la texture cible
 /// \return dimension de la texture cible
-CVector2i		 dktGetTextureSize(unsigned int textureID);
+CVector2i		 dktGetTextureSize(unsigned int textureID) OPENBV_LINK(dktGetTextureSize);
 
 
 

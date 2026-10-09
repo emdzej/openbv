@@ -24,6 +24,8 @@
 
 
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 #ifndef DLL_EXPORTS
 #define DLL_API __declspec(dllexport)
@@ -136,15 +138,15 @@ struct dkp_preset {
 
 
 // Les fonction du DKP
-DLL_API void			dkpCreateBillboard(	CVector3f & positionFrom,
-											CVector3f & positionTo,
+DLL_API void			dkpCreateBillboard(	const CVector3f & positionFrom,
+											const CVector3f & positionTo,
 											float fadeSpeed,
 											float fadeOutDistance,
 											float size,
-											CColor4f & color,
+											const CColor4f & color,
 											unsigned int textureID,
 											unsigned int srcBlend,
-											unsigned int dstBlend);
+											unsigned int dstBlend) OPENBV_LINK(dkpCreateBillboard);
 DLL_API void			dkpCreateParticle(	float *position,
 											float *vel,
 											float *startColor,
@@ -159,9 +161,9 @@ DLL_API void			dkpCreateParticle(	float *position,
 											unsigned int srcBlend,
 											unsigned int dstBlend,
 											int transitionFunc);
-DLL_API void			dkpCreateParticleEx(CVector3f & positionFrom,
-											CVector3f & positionTo,
-											CVector3f & direction,
+DLL_API void			dkpCreateParticleEx(const CVector3f & positionFrom,
+											const CVector3f & positionTo,
+											const CVector3f & direction,
 											float speedFrom,
 											float speedTo,
 											float pitchFrom,
@@ -172,10 +174,10 @@ DLL_API void			dkpCreateParticleEx(CVector3f & positionFrom,
 											float endSizeTo,
 											float durationFrom,
 											float durationTo,
-											CColor4f & startColorFrom,
-											CColor4f & startColorTo,
-											CColor4f & endColorFrom,
-											CColor4f & endColorTo,
+											const CColor4f & startColorFrom,
+											const CColor4f & startColorTo,
+											const CColor4f & endColorFrom,
+											const CColor4f & endColorTo,
 											float angleFrom,
 											float angleTo,
 											float angleSpeedFrom,
@@ -187,7 +189,7 @@ DLL_API void			dkpCreateParticleEx(CVector3f & positionFrom,
 											unsigned int *texture,
 											int textureFrameCount,
 											unsigned int srcBlend,
-											unsigned int dstBlend);
+											unsigned int dstBlend) OPENBV_LINK(dkpCreateParticleEx);
 DLL_API void			dkpCreateParticleExP(dkp_preset & preset);
 DLL_API	void			dkpInit();
 DLL_API void			dkpRender();

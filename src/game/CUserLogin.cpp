@@ -23,9 +23,11 @@
 #include "GameVar.h"
 #include "Console.h"
 #include "CStatus.h"
+#ifdef WIN32
 #include <ShellAPI.h>
 #include <process.h>
 #include <tchar.h>
+#endif
 
 
 CUserLogin::CUserLogin(CControl * in_parent, CControl * in_alignTo)

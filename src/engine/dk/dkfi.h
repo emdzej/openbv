@@ -24,6 +24,8 @@
 
 
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 #ifndef DLL_EXPORTS
 #define DLL_API __declspec(dllexport)
@@ -48,8 +50,8 @@
 DLL_API void			dkfBindFont(unsigned int ID);
 DLL_API unsigned int	dkfCreateFont(char *filename);
 DLL_API void			dkfDeleteFont(unsigned int *ID);
-DLL_API CPoint2f		dkfGetCaracterPos(float size, char *text, int caracter);
-DLL_API int				dkfGetOverStringCaracter(float size, char *text, CPoint2f & onStringPos);
+DLL_API CPoint2f		dkfGetCaracterPos(float size, char *text, int caracter) OPENBV_LINK(dkfGetCaracterPos);
+DLL_API int				dkfGetOverStringCaracter(float size, char *text, CPoint2f & onStringPos) OPENBV_LINK(dkfGetOverStringCaracter);
 DLL_API float			dkfGetStringHeight(float size, char *text);
 DLL_API float			dkfGetStringWidth(float size, char *text);
 DLL_API void			dkfPrint(float size, float x, float y, float z, char *text);

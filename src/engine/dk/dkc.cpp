@@ -137,12 +137,14 @@ INT4			dkcUpdateTimer()
 	#else
 		//get the current number of microseconds since january 1st 1970
 		
+#ifndef OPENBV_GASM
 		tms tBuf;
 		//int ct = times(&tBuf);
 
 		//printf("ct = %i\n",ct);
 
 		lGetTickCount = times(&tBuf);
+#endif
 
             struct timeval tv;
             gettimeofday(& tv, 0);

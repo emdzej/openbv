@@ -1,0 +1,18 @@
+# game data and upstream checkouts: never in git
+game/
+ref/
+re/
+out/
+.deps/
+# builds
+build*/
+__pycache__/
+*.gpr
+*.rep/
+.DS_Store
+# site
+docs/node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+docs/public/play/
+dist/

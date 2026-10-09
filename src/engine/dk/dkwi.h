@@ -24,6 +24,8 @@
 
 
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 #ifndef DLL_EXPORTS
 #define DLL_API __declspec(dllexport)
@@ -67,8 +69,8 @@ DLL_API HDC				dkwGetDC();
 DLL_API HWND			dkwGetHandle();
 DLL_API HINSTANCE		dkwGetInstance();
 DLL_API char*			dkwGetLastError();
-DLL_API CVector2i		dkwGetCursorPos();
-DLL_API CVector2i		dkwGetResolution();
+DLL_API CVector2i		dkwGetCursorPos() OPENBV_LINK(dkwGetCursorPos);
+DLL_API CVector2i		dkwGetResolution() OPENBV_LINK(dkwGetResolution);
 DLL_API int				dkwMainLoop();
 DLL_API void			dkwShutDown();
 DLL_API void			dkwUpdate();

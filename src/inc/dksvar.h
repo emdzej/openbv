@@ -37,6 +37,8 @@
 #define DKSVAR_H
 
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 //#pragma comment (lib, "dksvar.lib")
 #endif
@@ -89,17 +91,17 @@ void			dksvarSaveConfig(char * filename);
 /// \param defaultValue valeur par défaut de la variable
 /// \param true si cette variable permet d'être modifiée par l'exécution d'un fichier de configuration, false sinon
 //@{
-void			dksvarRegister(const CString &screenName, bool		 *defaultValue,	bool mConfigBypass);
+void			dksvarRegister(const CString &screenName, bool		 *defaultValue,	bool mConfigBypass) OPENBV_LINK(dksvarRegister_bool);
 void			dksvarRegister(const CString &screenName, int		 *defaultValue, int minValue,
-											 int maxValue, int flags, bool mConfigBypass);
+											 int maxValue, int flags, bool mConfigBypass) OPENBV_LINK(dksvarRegister_int);
 void			dksvarRegister(const CString &screenName, float		*defaultValue, float minValue,
-											 float maxValue, int flags, bool mConfigBypass);
-void			dksvarRegister(const CString &screenName, CVector2i *defaultValue, bool mConfigBypass);
-void			dksvarRegister(const CString &screenName, CVector2f *defaultValue, bool mConfigBypass);
-void			dksvarRegister(const CString &screenName, CVector3i *defaultValue, bool mConfigBypass);
-void			dksvarRegister(const CString &screenName, CVector3f *defaultValue, bool mConfigBypass);
-void			dksvarRegister(const CString &screenName, CVector4f *defaultValue, bool mConfigBypass);
-void			dksvarRegister(const CString &screenName, CString	 *defaultValue,	bool mConfigBypass);
+											 float maxValue, int flags, bool mConfigBypass) OPENBV_LINK(dksvarRegister_float);
+void			dksvarRegister(const CString &screenName, CVector2i *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v2i);
+void			dksvarRegister(const CString &screenName, CVector2f *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v2f);
+void			dksvarRegister(const CString &screenName, CVector3i *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v3i);
+void			dksvarRegister(const CString &screenName, CVector3f *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v3f);
+void			dksvarRegister(const CString &screenName, CVector4f *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v4f);
+void			dksvarRegister(const CString &screenName, CString	 *defaultValue,	bool mConfigBypass) OPENBV_LINK(dksvarRegister_str);
 //@}
 
 
@@ -108,13 +110,13 @@ void			dksvarRegister(const CString &screenName, CString	 *defaultValue,	bool mC
 /// Cette fonction permet de désenregistrer une variable enregistrée. La variable correspondant au nom fournis ne sera plus assujettie à des modifications provenant de l'exécution de commandes.
 ///
 /// \param screenName nom de la variable associé à la variable elle-même
-void			dksvarUnregister(const CString &screenName);
+void			dksvarUnregister(const CString &screenName) OPENBV_LINK(dksvarUnregister);
 
 
 
 void			dksvarInit(CStringInterface * stringInterface);
 void			dksvarGetFilteredVar(char * varName, char ** array, int size);
-void			dksvarGetFormatedVar(char * varName, CString * formatedString);
+void			dksvarGetFormatedVar(char * varName, CString * formatedString) OPENBV_LINK(dksvarGetFormatedVar);
 
 
 

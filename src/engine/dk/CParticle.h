@@ -98,10 +98,10 @@ public:
 public:
 	// Constructeur / Destructeur
 	CParticle(
-		float *position,
-		float *vel,
-		float *startColor,
-		float *endColor,
+		const float *position,
+		const float *vel,
+		const float *startColor,
+		const float *endColor,
 		float startSize,
 		float endSize,
 		float duration,

@@ -19,7 +19,9 @@
 #ifndef CONSOLE
 
 #include "CHost.h"
+#ifdef WIN32
 #include <direct.h>
+#endif
 #include "Map.h"
 #include "FileIO.h"
 #include "Scene.h"

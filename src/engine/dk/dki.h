@@ -36,6 +36,8 @@
 #define DKI_H
 
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 #pragma comment ( lib , "dki.lib" )
 
@@ -47,6 +49,7 @@
 #undef CALLBACK
 #endif
 #define CALLBACK
+#include "dik.h"
 #endif
 
 #include "CVector.h"
@@ -123,7 +126,7 @@ int				dkiGetMouseWheelVel();
 /// Cette fonction retourne la position actuelle de la souris. Cette position est en pixel et l'origine est le coin supérieur gauche de l'écran.
 ///
 /// \return retourne la position actuelle de la souris en pixel
-CVector2i		dkiGetMouse();
+CVector2i		dkiGetMouse() OPENBV_LINK(dkiGetMouse);
 
 
 
@@ -134,7 +137,7 @@ CVector2i		dkiGetMouse();
 /// Parfait pour les jeux de style FPS
 ///
 /// \return retourne la vitesse à laquelle se déplace la souris
-CVector2i		dkiGetMouseVel();
+CVector2i		dkiGetMouseVel() OPENBV_LINK(dkiGetMouseVel);
 
 
 
@@ -154,8 +157,8 @@ int				dkiGetState(int inputID);
 /// Aucune "dead zone" et courbe de progression est défini ici. C'est au client de le faire.
 ///
 /// \return position de chaque axe
-CVector3f		dkiGetJoy();
-CVector3f		dkiGetJoyR();
+CVector3f		dkiGetJoy() OPENBV_LINK(dkiGetJoy);
+CVector3f		dkiGetJoyR() OPENBV_LINK(dkiGetJoyR);
 
 
 
@@ -165,7 +168,7 @@ CVector3f		dkiGetJoyR();
 /// Si la dernière position d'un axe était de -1 et que sa position est à 1 lors de l'appel, la valeur 2 sera retourné pour cet axe.
 ///
 /// \return vitesse de chaque axe
-CVector3f		dkiGetJoyVel();
+CVector3f		dkiGetJoyVel() OPENBV_LINK(dkiGetJoyVel);
 
 
 
@@ -200,7 +203,7 @@ void			dkiUpdate(float elapsef, int width, int height);
 
 
 // Setter la position du cursor
-void			dkiSetMouse(CVector2i & mousePos);
+void			dkiSetMouse(CVector2i & mousePos) OPENBV_LINK(dkiSetMouse);
 
 
 

@@ -36,6 +36,8 @@
 #ifndef DKGL_H
 #define DKGL_H
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 	#ifndef _DX_
 	#pragma comment( lib, "opengl32.lib" )
@@ -231,9 +233,9 @@ void			dkglShutDown();
 /// \param pos2D position de la souris à l'écran en pixel
 /// \param zRange profondeur désirée (entre 0 et 1)
 /// \return le nouveau vecteur représentant correspondant à la position de la souris en 3D à une certaine profondeur.
-CVector3f		dkglUnProject(CVector2i & pos2D, float zRange);
+CVector3f		dkglUnProject(CVector2i & pos2D, float zRange) OPENBV_LINK(dkglUnProject);
 
-CVector3f		dkglProject(CVector3f & pos3D);
+CVector3f		dkglProject(const CVector3f & pos3D) OPENBV_LINK(dkglProject);
 
 
 #endif

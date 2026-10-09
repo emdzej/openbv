@@ -473,6 +473,7 @@ CVector4f rand(const CVector4f & from, const CVector4f & to)
 		rand(from[3], to[3]));
 }
 
+#ifndef OPENBV_GASM // openbv: identical to the game's copy (src/game/CVector.cpp), which the engine links to
 int rand(int from, int to)
 {
 	if (from > to)
@@ -496,3 +497,4 @@ float rand(float from, float to)
 	float precision = 30000.0f / eccart;
 	return (eccart == 0) ? from : from + (((float)(rand()%((int)((to-from)*precision)))) / precision);
 }
+#endif

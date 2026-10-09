@@ -1,0 +1,100 @@
+name: CI
+
+# On each push to main and each PR: builds openbv.wasm with the released gasm C SDK, plays it headless
+# with the released gasm-run and the vanilla 2.11 content (the hash line must be tools/headless-check.sh's),
+# then packages the gasm bundles (macOS, Linux, Windows) and smoke-tests the macOS and Linux x86_64 ones.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # The SDK and runner version lives in tools/fetch-gasm-sdk.sh (GASM_VERSION).
+      - name: fetch wasi-sdk and the gasm C SDK
+        run: tools/fetch-gasm-sdk.sh
+
+      - name: build openbv.wasm
+        run: |
+          cmake -S . -B build-gasm -DOPENBV_PLATFORM=gasm -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=.deps/gasm-c-sdk/cmake/gasm-toolchain.cmake -DWASI_SDK_PREFIX="$PWD/.deps/wasi-sdk"
+          cmake --build build-gasm -j
+          ls -l build-gasm/openbv.wasm
+
+      - name: content cache
+        uses: actions/cache@v6
+        with:
+          path: .deps/content
+          key: content-${{ hashFiles('tools/fetch-content.sh') }}
+
+      - name: fetch the content
+        run: tools/fetch-content.sh
+
+      # Headless gasm:gl runs on gasm's null GL: no GPU (or ANGLE) needed for the hashes.
+      - name: play 600 frames headless (expected hashes)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libasound2t64
+          tools/headless-check.sh "$(tools/fetch-gasm-runner.sh linux-x86_64)/gasm-run" build-gasm/openbv.wasm .deps/content
+
+      - name: upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: openbv-wasm
+          path: build-gasm/openbv.wasm
+          retention-days: 14
+
+  gasm-bundle-macos:
+    needs: wasm
+    runs-on: macos-latest   # iconutil, codesign (ad hoc)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: openbv-wasm
+          path: wasm
+      - name: content cache
+        uses: actions/cache@v6
+        with:
+          path: .deps/content
+          key: content-${{ hashFiles('tools/fetch-content.sh') }}
+      - name: package and smoke test
+        run: |
+          OPENBV_WASM=wasm/openbv.wasm tools/package-gasm.sh "0.0.0-ci.${GITHUB_SHA::7}" macos-universal \
+            "$(tools/fetch-gasm-runner.sh macos-universal)" dist
+          tools/smoke-gasm-bundle.sh dist/openbv-gasm-*-macos-universal.zip
+
+  gasm-bundle-linux:
+    needs: wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: openbv-wasm
+          path: wasm
+      - name: shellcheck the launchers and scripts
+        run: shellcheck tools/*.sh tools/gasm-bundle/*.sh play
+      - name: content cache
+        uses: actions/cache@v6
+        with:
+          path: .deps/content
+          key: content-${{ hashFiles('tools/fetch-content.sh') }}
+      - name: package (Linux x86_64 and arm64, Windows x86_64)
+        run: |
+          for p in linux-x86_64 linux-arm64 windows-x86_64; do
+            OPENBV_WASM=wasm/openbv.wasm tools/package-gasm.sh "0.0.0-ci.${GITHUB_SHA::7}" "$p" \
+              "$(tools/fetch-gasm-runner.sh "$p")" dist
+          done
+      - name: runtime libraries (ALSA)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libasound2t64
+      - name: smoke test (Linux x86_64)
+        run: tools/smoke-gasm-bundle.sh dist/openbv-gasm-*-linux-x86_64.tar.gz

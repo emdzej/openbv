@@ -24,6 +24,8 @@
 
 
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 	#ifndef DLL_EXPORTS
 		#define DLL_API __declspec(dllexport)
@@ -102,8 +104,8 @@ DLL_API void			 dkglSetBlendingFunc(int blending);
 DLL_API void			 dkglSetPointLight(int ID, float x, float y, float z, float r, float g, float b);
 DLL_API void			 dkglSetProjection(float mFieldOfView, float mNear, float mFar, float mWidth, float mHeight);
 DLL_API void			 dkglShutDown();
-DLL_API CVector3f		 dkglUnProject(CVector2i & pos2D, float zRange);
-DLL_API CVector3f		 dkglProject(CVector3f & pos3D);
+DLL_API CVector3f		 dkglUnProject(CVector2i & pos2D, float zRange) OPENBV_LINK(dkglUnProject);
+DLL_API CVector3f		 dkglProject(const CVector3f & pos3D) OPENBV_LINK(dkglProject);
 
 #ifdef _DX_
 DLL_API IDirect3DDevice9* dkglGetDXDevice();

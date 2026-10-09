@@ -667,6 +667,108 @@ int main(int argc, const char* argv[])
 	return 0;
 }
 
+#elif defined(OPENBV_GASM)
+
+// openbv: on gasm the runner owns the loop, so WinMain is cut in two: everything before
+// "while (dkwMainLoop());" runs once from gasm_init, one pass of that loop (dkwMainLoop's WM_PAINT,
+// which called paint()) runs on each gasm_frame, and the shutdown after it on exit. The Win32-only
+// steps (the window size probe, the CPU affinity, MessageBox, ShowCursor) have no counterpart.
+extern "C" void openbv_error(const char *msg);
+
+int bv2_gasm_init()
+{
+	dksvarInit(&stringInterface);
+	dksvarLoadConfig("main/bv2.cfg");
+	dksvarSaveConfig("main/bv2.cfg");
+
+	if (!gameVar.isLanguageLoaded())
+	{
+		openbv_error("Can not load language file\nTry deleting the config file.");
+		return 1;
+	}
+
+	if (gameVar.r_bitdepth != 16 && gameVar.r_bitdepth != 32) gameVar.r_bitdepth = 32;
+
+	dkcInit(30);
+
+	if (!dkwInit(gameVar.r_resolution[0], gameVar.r_resolution[1], gameVar.r_bitdepth, gameVar.lang_gameName.s, &mainLoopInterface, gameVar.r_fullScreen, gameVar.r_refreshRate))
+	{
+		openbv_error(dkwGetLastError());
+		return 1;
+	}
+	if (!dkiInit(dkwGetInstance(), dkwGetHandle()))
+	{
+		openbv_error("Error creating Input");
+		return 1;
+	}
+	if (!dkglCreateContext(dkwGetDC(), gameVar.r_bitdepth))
+	{
+		openbv_error("Error creating openGL context");
+		return 1;
+	}
+	dktInit();
+	dkoInit();
+	dkpInit();
+	if (!dksInit(gameVar.s_mixRate, gameVar.s_maxSoftwareChannels))
+	{
+		openbv_error("Error creating fmod");
+		return 1;
+	}
+	if (bb_init() == 1)
+	{
+		openbv_error("Error initiating baboNet");
+		return 1;
+	}
+	bbNetVersion = bb_getVersion();
+	if (CString("%s", bbNetVersion) != "4.0")
+	{
+		openbv_error("Wrong version of BaboNet");
+		return 1;
+	}
+
+	lobby = new CLobby();
+	console = new Console();
+	console->init();
+	status = new CStatus();
+	master = new CMaster();
+	scene = new Scene();
+	return 0;
+}
+
+bool bv2_gasm_frame()
+{
+	if (!dkwMainLoop(0)) return false;
+	mainLoopInterface.paint();
+	return true;
+}
+
+void bv2_gasm_exit()
+{
+	delete scene;
+	scene = 0;
+	delete master;
+	master = 0;
+	delete console;
+	console = 0;
+	delete lobby;
+	lobby = 0;
+
+	dksvarSaveConfig("main/bv2.cfg");
+
+	bb_peerShutdown();
+	bb_shutdown();
+	dksShutDown();
+	dkpShutDown();
+	dkoShutDown();
+	dkfShutDown();
+	dktShutDown();
+	dkglShutDown();
+	dkiShutDown();
+	dkwShutDown();
+
+	delete status;
+}
+
 #else
 
 

@@ -50,6 +50,8 @@
 #define DKW_H
 
 
+
+#include "openbv_link.h"
 #include "platform_types.h"
 
 #ifdef WIN32
@@ -159,7 +161,7 @@ char*			dkwGetLastError();
 /// Cette fonction retourne la position de la souris en pixel par rapport au coin supérieur gauche de la fenêtre.
 ///
 /// \return position de la souris
-CVector2i		dkwGetCursorPos();
+CVector2i		dkwGetCursorPos() OPENBV_LINK(dkwGetCursorPos);
 
 
 
@@ -168,7 +170,7 @@ CVector2i		dkwGetCursorPos();
 /// Cette fonction retourne la résolution actuelle de la fenêtre en pixel.
 ///
 /// \return résolution actuelle de la fenêtre
-CVector2i		dkwGetResolution();
+CVector2i		dkwGetResolution() OPENBV_LINK(dkwGetResolution);
 
 
 

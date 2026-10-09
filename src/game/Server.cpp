@@ -287,7 +287,7 @@ std::vector<CString> Server::populateMapList(bool all)
 		maps = mapList;
 	else
 	{
-#ifdef WIN32
+#if defined(WIN32) || defined(OPENBV_GASM)   // openbv: the Windows listing (names without .bvm), see win_find.h
 		WIN32_FIND_DATA FindFileData;
 		HANDLE hFind = INVALID_HANDLE_VALUE;
 		char DirSpec[MAX_PATH]; // directory specification

@@ -24,6 +24,8 @@
 
 
 
+
+#include "openbv_link.h"
 // #ifndef DLL_EXPORTS
 // #define DLL_API __declspec(dllexport)
 // #else
@@ -67,21 +69,21 @@ DLL_API(CMD_RET)		dksvarCommand(char * command);
 DLL_API(void)			dksvarLoadConfig(char * filename);
 DLL_API(void)			dksvarLoadConfigSVOnly(char * filename);
 DLL_API(void)			dksvarSaveConfig(char * filename);
-DLL_API(void)			dksvarRegister(const CString &screenName, bool		 *defaultValue,	bool mConfigBypass);
+DLL_API(void)			dksvarRegister(const CString &screenName, bool		 *defaultValue,	bool mConfigBypass) OPENBV_LINK(dksvarRegister_bool);
 DLL_API(void)			dksvarRegister(const CString &screenName, int		 *defaultValue, int minValue,
-											 int maxValue, int flags, bool mConfigBypass);
+											 int maxValue, int flags, bool mConfigBypass) OPENBV_LINK(dksvarRegister_int);
 DLL_API(void)			dksvarRegister(const CString &screenName, float		*defaultValue, float minValue,
-											 float maxValue, int flags, bool mConfigBypass);
-DLL_API(void)			dksvarRegister(const CString &screenName, CVector2i *defaultValue, bool mConfigBypass);
-DLL_API(void)			dksvarRegister(const CString &screenName, CVector2f *defaultValue, bool mConfigBypass);
-DLL_API(void)			dksvarRegister(const CString &screenName, CVector3i *defaultValue, bool mConfigBypass);
-DLL_API(void)			dksvarRegister(const CString &screenName, CVector3f *defaultValue, bool mConfigBypass);
-DLL_API(void)			dksvarRegister(const CString &screenName, CVector4f *defaultValue, bool mConfigBypass);
-DLL_API(void)			dksvarRegister(const CString &screenName, CString	 *defaultValue,	bool mConfigBypass);
-DLL_API(void)			dksvarUnregister(const CString &screenName);
+											 float maxValue, int flags, bool mConfigBypass) OPENBV_LINK(dksvarRegister_float);
+DLL_API(void)			dksvarRegister(const CString &screenName, CVector2i *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v2i);
+DLL_API(void)			dksvarRegister(const CString &screenName, CVector2f *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v2f);
+DLL_API(void)			dksvarRegister(const CString &screenName, CVector3i *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v3i);
+DLL_API(void)			dksvarRegister(const CString &screenName, CVector3f *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v3f);
+DLL_API(void)			dksvarRegister(const CString &screenName, CVector4f *defaultValue, bool mConfigBypass) OPENBV_LINK(dksvarRegister_v4f);
+DLL_API(void)			dksvarRegister(const CString &screenName, CString	 *defaultValue,	bool mConfigBypass) OPENBV_LINK(dksvarRegister_str);
+DLL_API(void)			dksvarUnregister(const CString &screenName) OPENBV_LINK(dksvarUnregister);
 DLL_API(void)			dksvarInit(CStringInterface * stringInterface);
 DLL_API(void)			dksvarGetFilteredVar(char * varName, char ** array, int size);
-DLL_API(void)			dksvarGetFormatedVar(char * varName, CString * formatedString);
+DLL_API(void)			dksvarGetFormatedVar(char * varName, CString * formatedString) OPENBV_LINK(dksvarGetFormatedVar);
 
 
 

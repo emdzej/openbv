@@ -66,6 +66,8 @@
 
 
 
+
+#include "openbv_link.h"
 #include "CVector.h"
 
 
@@ -157,15 +159,15 @@ struct dkp_preset {
 ///
 /// Non utilisée
 ///
-void			dkpCreateBillboard(	CVector3f & positionFrom,
-									CVector3f & positionTo,
+void			dkpCreateBillboard(	const CVector3f & positionFrom,
+									const CVector3f & positionTo,
 									float fadeSpeed,
 									float fadeOutDistance,
 									float size,
-									CColor4f & color,
+									const CColor4f & color,
 									unsigned int textureID,
 									unsigned int srcBlend,
-									unsigned int dstBlend);
+									unsigned int dstBlend) OPENBV_LINK(dkpCreateBillboard);
 									
 									
 
@@ -238,9 +240,9 @@ void			dkpCreateParticle(	float *position,
 /// \param textureFrameCount nombre de textures contenues dans le paramètre 'texture'. Ce nombre détermine aussi le nombre d'images constituants l'animation de la ou des particules
 /// \param srcBlend drapeau représentant l'une des 9 configurations possibles du pixel source pour le mélange de couleur(blending)
 /// \param dstBlend drapeau représentant l'une des 8 configurations possibles du pixel destination pour le mélange de couleur(blending)
-void			dkpCreateParticleEx(CVector3f & positionFrom,
-									CVector3f & positionTo,
-									CVector3f & direction,
+void			dkpCreateParticleEx(const CVector3f & positionFrom,
+									const CVector3f & positionTo,
+									const CVector3f & direction,
 									float speedFrom,
 									float speedTo,
 									float pitchFrom,
@@ -251,10 +253,10 @@ void			dkpCreateParticleEx(CVector3f & positionFrom,
 									float endSizeTo,
 									float durationFrom,
 									float durationTo,
-									CColor4f & startColorFrom,
-									CColor4f & startColorTo,
-									CColor4f & endColorFrom,
-									CColor4f & endColorTo,
+									const CColor4f & startColorFrom,
+									const CColor4f & startColorTo,
+									const CColor4f & endColorFrom,
+									const CColor4f & endColorTo,
 									float angleFrom,
 									float angleTo,
 									float angleSpeedFrom,
@@ -266,7 +268,7 @@ void			dkpCreateParticleEx(CVector3f & positionFrom,
 									unsigned int *texture,
 									int textureFrameCount,
 									unsigned int srcBlend,
-									unsigned int dstBlend);
+									unsigned int dstBlend) OPENBV_LINK(dkpCreateParticleEx);
 
 
 

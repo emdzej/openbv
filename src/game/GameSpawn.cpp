@@ -534,7 +534,7 @@ bool Game::spawnProjectile(net_clsv_svcl_player_projectile & playerProjectile, b
 //
 // On se cré une explosion dla mort mouhou :P
 //
-void Game::spawnExplosion(CVector3f & position, CVector3f & normal, float size)
+void Game::spawnExplosion(const CVector3f & position, const CVector3f & normal, float size)
 {
 	if (size >= 4.0f)
 	{

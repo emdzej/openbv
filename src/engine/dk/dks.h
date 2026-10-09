@@ -37,6 +37,8 @@
 #define DKS_H
 
 
+
+#include "openbv_link.h"
 #ifdef WIN32
 #pragma comment( lib, "dks.lib" )
 
@@ -105,17 +107,17 @@ void			dksDeleteSound(FSOUND_SAMPLE* fsound_sample);
 // Ajou de fonctions
 #ifdef USE_FMODEX
 int	dksPlaySound(FMOD_SOUND * fsound_sample, int channel, int volume=255);
-void dksPlay3DSound(FMOD_SOUND * fsound_sample, int channel, float range, CVector3f & position, int volume=255);
+void dksPlay3DSound(FMOD_SOUND * fsound_sample, int channel, float range, CVector3f & position, int volume=255) OPENBV_LINK(dksPlay3DSound);
 #else
 int			dksPlaySound(FSOUND_SAMPLE * fsound_sample, int channel, int volume=255);
-void			dksPlay3DSound(FSOUND_SAMPLE * fsound_sample, int channel, float range, CVector3f & position, int volume=255);
+void			dksPlay3DSound(FSOUND_SAMPLE * fsound_sample, int channel, float range, CVector3f & position, int volume=255) OPENBV_LINK(dksPlay3DSound);
 #endif
 
 void			dksPlayMusic(char* filename, int channel=-1, int volume=255);
 void			dksStopMusic();
 
 #ifdef USE_FMODEX
-void dksSet3DListenerAttributes(const CVector3f * pos, const CVector3f * vel, const CVector3f * forward, const CVector3f * up);
+void dksSet3DListenerAttributes(const CVector3f * pos, const CVector3f * vel, const CVector3f * forward, const CVector3f * up) OPENBV_LINK(dksSet3DListenerAttributes);
 void dksUpdate();
 void dksSetSfxMasterVolume(float volume);
 void dksStopSound(FMOD_SOUND * s);
