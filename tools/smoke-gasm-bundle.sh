@@ -26,14 +26,14 @@ if [ -d "$DIR/OpenBV.app" ]; then
   [ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Contents/Info.plist")" = pl.emdzej.openbv.gasm ] ||
     fail "bundle id"
   lipo -info "$RUN"
-  [ -f "$GL/libEGL.dylib" ] && [ -f "$GL/libGLESv2.dylib" ] || fail "ANGLE missing from Frameworks"
+  if [ ! -f "$GL/libEGL.dylib" ] || [ ! -f "$GL/libGLESv2.dylib" ]; then fail "ANGLE missing from Frameworks"; fi
 else
   RUN="$DIR/gasm-run"; WASM="$DIR/openbv.wasm"; L="$DIR/openbv.sh"; DATA="$DIR/data"
-  [ -f "$DIR/libEGL.so" ] && [ -f "$DIR/libGLESv2.so" ] || fail "ANGLE missing"
+  if [ ! -f "$DIR/libEGL.so" ] || [ ! -f "$DIR/libGLESv2.so" ]; then fail "ANGLE missing"; fi
   [ -s "$DIR/openbv.png" ] || fail "missing openbv.png"
 fi
 if [ ! -x "$RUN" ] || [ ! -s "$WASM" ] || [ ! -x "$L" ]; then fail "gasm-run, openbv.wasm or the launcher missing"; fi
-[ -s "$DATA/bv2.db" ] && [ -d "$DATA/main/maps" ] && [ -s "$DATA/main/License.txt" ] || fail "content incomplete"
+if [ ! -s "$DATA/bv2.db" ] || [ ! -d "$DATA/main/maps" ] || [ ! -s "$DATA/main/License.txt" ]; then fail "content incomplete"; fi
 [ "$(find "$DATA" -type f | wc -l | tr -d ' ')" = 328 ] || fail "content: $(find "$DATA" -type f | wc -l) files, expected 328"
 grep -q "gasm-run [0-9]" "$DIR/README.txt" || fail "README does not name the gasm version"
 

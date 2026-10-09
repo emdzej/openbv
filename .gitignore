@@ -14,5 +14,8 @@ __pycache__/
 docs/node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
-docs/public/play/
+docs/public/play/*
+!docs/public/play/index.html
+!docs/public/play/play.js
+!docs/public/play/play.css
 dist/
