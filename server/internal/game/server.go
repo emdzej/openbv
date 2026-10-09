@@ -89,6 +89,13 @@ type Server struct {
 	banList        []ban
 	infoSendDelay  float32
 	nbPlayers      int
+
+	// combat (milestone 2)
+	weapons            [proto.WeaponMinibot + 1]weaponDef // gameVar.weapons: changed at run time
+	projectiles        []*projectile
+	uniqueProjectileID int32 // Projectile::uniqueProjectileID: never reset
+
+	sent func(dest int32, typ uint16, msg any) // tests: every message sent
 }
 
 // New hosts a game for a session (Server::host, Server.cpp:150): its map is the first of the
@@ -125,7 +132,9 @@ func New(st session.Settings, content string, net *bbnet.Server, log *slog.Logge
 	if len(maps) == 0 {
 		maps = []string{"CTF-Daivuk"}
 	}
-	// Game::Game (Game.cpp:79): the game type and the timers from the cvars
+	// Game::Game (Game.cpp:79): the game type and the timers from the cvars, the weapons' Pro values
+	s.weapons = defaultWeapons()
+	s.updateProSettings()
 	s.gameType = int(s.SV.GameType.I)
 	s.spawnType = int(s.SV.SpawnType.I)
 	s.gameTimeLeft = s.SV.GameTimeLimit.F
@@ -187,6 +196,9 @@ func (s *Server) addMap(name string) {
 // --- sending
 
 func (s *Server) send(dest int32, typ uint16, msg any) {
+	if s.sent != nil {
+		s.sent(dest, typ, msg)
+	}
 	s.net.Send(dest, typ, proto.Encode(msg), wire.TCP)
 }
 
@@ -321,14 +333,8 @@ func (s *Server) Frame() {
 			s.Command(fmt.Sprintf("sayid %d %s", i, s.SV.JoinMessage.S))
 		}
 	}
-	// 15. Game::update (Game.cpp:348): the players, while playing
-	if s.roundState == proto.GamePlaying {
-		for _, p := range s.players {
-			if p != nil {
-				p.update(delay, s.SV.CubicMotion.B)
-			}
-		}
-	}
+	// 15.
+	s.gameUpdate()
 	// 16. the coord-frame batches
 	if s.roundState == proto.GamePlaying {
 		s.sendCoordFrames()
@@ -339,6 +345,31 @@ func (s *Server) Frame() {
 	s.sendMapChunks()
 	// 21.
 	s.frameID++
+}
+
+// gameUpdate is Game::update (Game.cpp:258) on the server: (votes: milestone 5) the players while
+// playing, each followed by its photon beam and the check that its weapons are still allowed; then
+// the projectiles, round over or not. (Minibot wall collisions: milestone 3.)
+func (s *Server) gameUpdate() {
+	if s.roundState == proto.GamePlaying {
+		for i, p := range s.players {
+			if p == nil {
+				continue
+			}
+			p.update(delay, s.SV.CubicMotion.B)
+			s.photonTick(i)
+			if p = s.players[i]; p == nil { // a hit can't delete a player, but stay safe
+				continue
+			}
+			if p.Weapon != nil && !s.weaponEnabled(p.Weapon.ID) {
+				p.switchWeapon(&s.weapons, s.selectAvailableWeapon(), true)
+			}
+			if p.Melee != nil && !s.meleeEnabled(p.Melee.ID) {
+				p.switchMeleeWeapon(&s.weapons, s.selectAvailableMelee(), true)
+			}
+		}
+	}
+	s.updateProjectiles()
 }
 
 // maxTimeOverMaxPing (Server.h).
@@ -627,6 +658,7 @@ func (s *Server) resetGameType(gameType int) {
 func (s *Server) resetRound() {
 	s.roundTimeLeft = s.SV.RoundTimeLimit.F
 	s.flagState = [2]int8{-2, -2}
+	s.projectiles = nil // without NET_SVCL_DELETE_PROJECTILE: the clients reset theirs too
 	for _, p := range s.players {
 		if p != nil {
 			s.killPlayer(p)
@@ -766,7 +798,7 @@ func (s *Server) spawnPlayer(id int) bool {
 }
 
 func (s *Server) spawnAt(p *Player, pos bvmath.Vec3) {
-	p.spawn(pos, s.SV.TimeToSpawn.F, s.SV.SpawnImmunityTime.F)
+	p.spawn(pos, s.SV.TimeToSpawn.F, s.SV.SpawnImmunityTime.F, &s.weapons)
 }
 
 // assignPlayerTeam is Game::assignPlayerTeam (Game.cpp:880).

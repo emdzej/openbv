@@ -93,8 +93,24 @@ type Player struct {
 	Skin                            string
 	RedDecal, GreenDecal, BlueDecal bvmath.Vec3
 
-	WeaponID, MeleeID                int // the current weapons (weapon->weaponID; -1: none)
+	Weapon, Melee                    *weapon // the current weapons (nil before the first spawn)
 	NextSpawnWeapon, NextMeleeWeapon int
+
+	// shooting (Player.h): the rate checks of NET_CLSV_PLAYER_SHOOT (ServerRecv.cpp:944)
+	MfElapsedSinceLastShot float32
+	SecondsFired           float32 // how long an automatic has been firing (the flame thrower's range)
+	ShotCount              int32
+	ShotsPerSecond         float32
+	SecondPassed           float32
+	FiredShowDelay         float32
+	FireFrameDelay         int32
+	ScreenHit              float32
+	GrenadeDelay           float32
+	MeleeDelay             float32
+	MfCFTimer              float32
+	// the photon rifle's beam: ten more hits along p1-p2 (Game.cpp:397)
+	P1, P2  bvmath.Vec3
+	IncShot int32
 
 	TimeToSpawn, ImmuneTime, Protection                            float32
 	TimeDead, TimeAlive, TimeIdle, TimeInServer, TimePlayedCurGame float32
@@ -132,14 +148,43 @@ func newPlayer(id int, babonetID uint32, timeToSpawn float32) *Player {
 		BabySitTime:     5,
 		SpawnSlot:       -1,
 		TimeToSpawn:     timeToSpawn,
-		WeaponID:        -1,
-		MeleeID:         -1,
 		NextSpawnWeapon: proto.WeaponSMG,
 		NextMeleeWeapon: proto.WeaponKnives,
 	}
 	p.pingLogInterval = float32(1.0) / 30
 	p.nextPingLogTime = p.pingLogInterval
+	p.MfElapsedSinceLastShot = 9999 // "enough time has elapsed for any good to be able to shoot"
 	return p
+}
+
+// weaponID is weapon->weaponID, -1 without a weapon.
+func (p *Player) weaponID() int {
+	if p.Weapon == nil {
+		return -1
+	}
+	return p.Weapon.ID
+}
+
+// switchWeapon is Player::switchWeapon (Player.cpp:398): a new instance of the table's weapon, with
+// a second before it fires. (It also sets the global cl_primaryWeapon, which only matters to the
+// listen server's own client.)
+func (p *Player) switchWeapon(table *[proto.WeaponMinibot + 1]weaponDef, id int, force bool) {
+	if p.Weapon != nil && force && p.Weapon.ID == id {
+		return
+	}
+	p.Weapon = newWeapon(table[id])
+	p.Weapon.CurrentFireDelay = 1
+	p.ShotCount = 0
+	p.ShotsPerSecond = 0
+}
+
+// switchMeleeWeapon is Player::switchMeleeWeapon (Player.cpp:421).
+func (p *Player) switchMeleeWeapon(table *[proto.WeaponMinibot + 1]weaponDef, id int, force bool) {
+	if p.Melee != nil && force && p.Melee.ID == id {
+		return
+	}
+	p.Melee = newWeapon(table[id])
+	p.Melee.CurrentFireDelay = 0
 }
 
 // updatePing is Player::updatePing (PlayerUpdate.cpp:29). With nextPingLogTime starting at the step
@@ -178,6 +223,8 @@ func (p *Player) update(delay float32, cubic bool) {
 	if p.BabySitTime >= 0 {
 		p.BabySitTime -= delay
 	}
+	p.MfElapsedSinceLastShot += delay
+	p.MfCFTimer += delay
 	if p.Protection > 0 {
 		p.Protection -= delay
 		if p.Protection < 0 {
@@ -191,8 +238,48 @@ func (p *Player) update(delay float32, cubic bool) {
 		}
 	}
 	p.FrameSinceLast++
+	if p.FireFrameDelay > 0 {
+		p.FireFrameDelay--
+	}
 	p.LastCF.assign(p.CurrentCF)
 	p.CurrentCF.FrameID++
+	// the rapid-fire statistic (nothing reads it on the server)
+	p.SecondPassed += delay
+	if p.SecondPassed > 3 && p.ShotCount > 1 {
+		p.ShotsPerSecond = float32(p.ShotCount-1) / p.SecondPassed
+		p.SecondPassed = 0
+	}
+	if p.ScreenHit > 0 {
+		p.ScreenHit -= float32(delay * .25)
+		if p.ScreenHit < 0 {
+			p.ScreenHit = 0
+		}
+	}
+	if p.FiredShowDelay > 0 {
+		p.FiredShowDelay -= delay
+		if p.FiredShowDelay < 0 {
+			p.FiredShowDelay = 0
+		}
+	}
+	if p.GrenadeDelay > 0 {
+		p.GrenadeDelay -= delay
+		if p.GrenadeDelay < 0 {
+			p.GrenadeDelay = 0
+		}
+	}
+	if p.MeleeDelay > 0 {
+		p.MeleeDelay -= delay
+		if p.MeleeDelay < 0 {
+			p.MeleeDelay = 0
+		}
+	}
+	alive := p.Status == proto.StatusAlive
+	if p.Weapon != nil {
+		p.Weapon.update(delay, alive)
+	}
+	if p.Melee != nil {
+		p.Melee.update(delay, alive)
+	}
 
 	if p.Status == proto.StatusDead {
 		p.TimeDead += delay
@@ -222,15 +309,8 @@ func (p *Player) update(delay float32, cubic bool) {
 
 const toDegree = 57.295780 // TO_DEGREE (CVector.h)
 
-// normalize is the game's normalize(CVector3f&) (CVector.cpp:304): times the reciprocal of the
-// length (not divided by it: the float results differ), times 0 for a zero vector.
-func normalize(v bvmath.Vec3) bvmath.Vec3 {
-	var x float32
-	if y := v.Length(); y != 0 {
-		x = 1 / y
-	}
-	return bvmath.Vec3{v[0] * x, v[1] * x, v[2] * x}
-}
+// normalize is the game's normalize (bvmath.Normalize).
+func normalize(v bvmath.Vec3) bvmath.Vec3 { return bvmath.Normalize(v) }
 
 // setCoordFrame is Player::setCoordFrame (Player.cpp:1505).
 func (p *Player) setCoordFrame(m *proto.PlayerCoordFrameMsg) {
@@ -255,7 +335,7 @@ func (p *Player) setCoordFrame(m *proto.PlayerCoordFrameMsg) {
 }
 
 // spawn is Player::spawn (Player.cpp:822).
-func (p *Player) spawn(at bvmath.Vec3, timeToSpawn, immunity float32) {
+func (p *Player) spawn(at bvmath.Vec3, timeToSpawn, immunity float32, table *[proto.WeaponMinibot + 1]weaponDef) {
 	p.Status = proto.StatusAlive
 	p.Life = 1
 	p.TimeToSpawn = timeToSpawn
@@ -270,10 +350,12 @@ func (p *Player) spawn(at bvmath.Vec3, timeToSpawn, immunity float32) {
 	p.NetCF0.reset()
 	p.NetCF1.reset()
 	p.CFProgression = 0
+	p.GrenadeDelay = 0
+	p.MeleeDelay = 0
 	p.GrenadeLeft = 2
 	p.MolotovLeft = 1
-	p.WeaponID = p.NextSpawnWeapon
-	p.MeleeID = p.NextMeleeWeapon
+	p.switchWeapon(table, p.NextSpawnWeapon, false)
+	p.switchMeleeWeapon(table, p.NextMeleeWeapon, false)
 }
 
 // reinit is Player::reinit (Player.cpp:873): the stats for a new game.

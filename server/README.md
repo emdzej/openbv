@@ -4,10 +4,14 @@ Babo Violent 2.11 game servers for the openbv client, in Go: one process runs se
 game server of its own, with its port, settings and players), with an admin page. The rules are a port of
 the original's `Server*.cpp` and the parts of the game it runs; `design/server.md` is the specification.
 
-**State:** milestone 1 of `design/server.md` §10.2: players connect, get the original's handshake and state
-dump (or download the map), choose teams, spawn, move, see each other and chat; pings, timeouts, idling,
-the join message, round end and map rotation. Shooting, damage, projectiles, CTF, votes and the master
-server (the in-game Game Browser) come next. Their messages are accepted and ignored.
+**State:** milestones 1 and 2 of `design/server.md` §10.2. Players connect, get the original's handshake and
+state dump (or download the map), choose teams, spawn, move, see each other and chat; pings, timeouts,
+idling, the join message, round end and map rotation. Deathmatch combat: the hitscan weapons (SMG, shotgun,
+sniper, dual machine gun, chain gun, photon rifle with its lingering beam, flame thrower) with the
+original's spread, fire-rate checks and ray tests; damage with the Pro values, shields, spawn immunity and
+instagib; kills, scores, the drops (life pack, weapon, grenades) and their pickups; the `sv_serverType = 1`
+quirk. Rockets, grenades, molotovs, the secondaries (knives, nuke, shield, minibot), CTF and the team rules,
+votes and the master server (the in-game Game Browser) come next; their messages are accepted and ignored.
 
 ## Run
 
@@ -53,10 +57,11 @@ played first), `port` (the session listens there).
 | `internal/transport` | WebSocket connections: reader, bounded send queue, pings |
 | `internal/bbnet` | baboNet's server semantics: one event per update, admission at half-second checks, NetIDs, packet order |
 | `internal/proto` | Every message struct, byte for byte (checked against `design/server.md` Appendix A) |
-| `internal/bvmath` | float32 vectors, `cubicSpline`, MSVC's `rand()` and the game's `rand` helpers |
-| `internal/bvmap` | `.bvm` maps, all four versions |
+| `internal/bvmath` | float32 vectors (no fused operations), `rotateAboutAxis` with musl's `cosf`/`sinf`, `segmentToSphere`, `cubicSpline`, MSVC's `rand()` and the game's `rand` helpers |
+| `internal/bvmap` | `.bvm` maps, all four versions; `rayTest` |
 | `internal/cvar` | The `sv_*` variables, their text formats and the engine's parsing |
-| `internal/game` | The server: the frame (`Server::update`), the messages (`Server::recvPacket`), players |
+| `internal/game` | The server: the frame (`Server::update`), the messages (`Server::recvPacket`), players, weapons, shooting and damage (`combat.go`), projectiles |
+| `internal/reftest` | Values from the original C++ for the tests: `cpp/build.sh` compiles the original functions (extracted verbatim) and writes `testdata/golden.json.gz` |
 | `internal/session` | Sessions: the 30 Hz loop, the manager with per-session ports |
 | `internal/admin` | The admin API and page |
 
@@ -70,6 +75,13 @@ The tests that need the game's maps use `../ref/BaboViolent2/BaboViolent2/Conten
 and skip without it. `internal/game` runs the protocol end to end over a WebSocket: the handshake, a
 refused password, teams, spawning and two players seeing each other move.
 
-Against the original: the openbv client logs every packet with `--param netlog=1`. Hosting a game in the
-client (the original C++ server, in-process) and joining the Go server give the same message sequence
-(design/server.md §10.3).
+Against the original (design/server.md §10.3):
+
+- `internal/reftest`: the bit-exact core — ray tests, segment-to-sphere, rotations, the bullet spread with
+  its `rand()` calls, bounces, the damage formula — against values computed by the original code
+  (`internal/reftest/cpp/build.sh` regenerates them; needs clang, python3 and unifdef; CI only reads them).
+- `internal/game/listen_test.go`: sniper shots recorded from the C++ listen server (a game hosted in the
+  client, `--param netlog=1`), each reply reproduced byte for byte.
+- By hand: the client logs every packet with `--param netlog=1`. Hosting a game in the client (the
+  original C++ server, in-process) and joining the Go server give the same message sequence. For a fight,
+  run two clients (`./play --realtime --profile=a` and `--profile=b`) against one session.

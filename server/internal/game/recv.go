@@ -196,10 +196,23 @@ func (s *Server) recvPacket(netID uint32, pk wire.Packet) {
 			}
 		}
 
-	case proto.ClsvPlayerShoot, proto.ClsvSvclPlayerProjectile, proto.ClsvSvclPlayerShootMelee,
-		proto.ClsvPickupRequest, proto.ClsvVote, proto.ClsvSvclVoteRequest, proto.ClsvAdminRequest,
-		proto.SvclConsole:
-		// combat, votes and admin: the next milestones
+	case proto.ClsvPlayerShoot:
+		var m proto.ClsvPlayerShootMsg
+		proto.Decode(d, &m)
+		if p := s.player(m.PlayerID, netID); p != nil {
+			s.playerShoot(p, &m)
+		}
+
+	case proto.ClsvPickupRequest:
+		var m proto.ClsvPickupRequestMsg
+		proto.Decode(d, &m)
+		if p := s.player(m.PlayerID, netID); p != nil {
+			s.pickupRequest(p)
+		}
+
+	case proto.ClsvSvclPlayerProjectile, proto.ClsvSvclPlayerShootMelee, proto.ClsvVote,
+		proto.ClsvSvclVoteRequest, proto.ClsvAdminRequest, proto.SvclConsole:
+		// projectiles, secondaries, votes and admin: the next milestones
 
 	default:
 		s.log.Debug("unknown message", "type", pk.Type, "netId", netID)
@@ -254,12 +267,12 @@ func (s *Server) gameVersionAccepted(p *Player, password string) {
 			st.RedDecal[k] = uint8(o.RedDecal[k] * 255)
 		}
 		st.WeaponID = proto.WeaponSMG
-		if o.Status == proto.StatusAlive && o.WeaponID >= 0 {
-			st.WeaponID = int8(o.WeaponID)
+		if o.Status == proto.StatusAlive && o.Weapon != nil {
+			st.WeaponID = int8(o.Weapon.ID)
 		}
 		s.send(dest, proto.SvclPlayerEnumState, &st)
 	}
-	// the live projectiles: milestone 3
+	s.projectileEnum(dest)
 	if s.gameType == proto.GameTypeCTF {
 		s.send(dest, proto.SvclFlagEnum, &proto.SvclFlagEnumMsg{
 			FlagState: s.flagState, PositionBlue: s.flagPos[0], PositionRed: s.flagPos[1],

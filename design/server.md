@@ -1192,6 +1192,23 @@ Deviations implemented so far (milestone 1, `server/internal/game`):
 | Champion spawn index clamped at `size-1` | The original's `> size` test let `size` through (§5.9). |
 | The console `set` sends the formatted value after validation | The original broadcast the raw command line before validating it (§2.6). |
 
+Milestone 2 (DM combat):
+
+| Deviation | Why |
+|---|---|
+| `NET_CLSV_PLAYER_SHOOT` with a weapon ID outside 0..13, or from a player without a weapon, is dropped | The rate check indexed `gameVar.weapons[]` with the client's ID; a player that never spawned has no weapon (null dereference). |
+| A pickup of a dropped "weapon" whose ID isn't a weapon still sends the pickup but doesn't switch weapons | `switchWeapon` indexed the table with it. |
+| `uniqueProjectileID` is per session | One process hosts several sessions; the original's static counter was per process = per server. |
+| `sv_explodingFT` (off by default) logs instead of nuking the shooter | `Server::nukePlayer` comes with the nuke, milestone 3. |
+| Struct padding is zero in every message | The C++ sent stack garbage there (e.g. the last byte of `net_svcl_player_shoot`). |
+
+Arithmetic: all game maths is float32 with every product rounded on its own (Go may fuse `a*b+c` on arm64;
+the C++ and the wasm client don't), `cosf`/`sinf` are musl's (`bvmath/muslmath.go`, the wasm client's libc:
+a correctly rounded cosf differs in the last bit for some angles, and `(short)(x*100)` can turn that into a
+different coordinate), and the C conversions to `char`/`short` truncate and wrap as the wasm build does.
+`atanf` (photon falloff type 1) and `pow` (type 3) are Go's double functions rounded; the golden cases
+match bit for bit, but the photon types are rarely used and untested on other inputs.
+
 ---
 
 ## 9. The master server (game list)
@@ -1287,16 +1304,18 @@ through a command channel processed at the start of a frame (like console input)
 
 ### 10.2 Milestones
 
-Status (October 2026): milestone 1 is done (`server/`); the rest is to do.
+Status (October 2026): milestones 1 and 2 are done (`server/`); the rest is to do.
 
 1. **[done] Wire + handshake + presence.** `proto` with golden tests for every struct; transport; session loop;
    connect/disconnect events; the handshake and state dump (§2.2); ping/pong (§5.11); chat; name/skin;
    team requests; spawn requests with DM spawn selection; coord-frame interpolation and broadcast (§2.5);
    map download. *Done when:* two openbv clients join a Go DM session, see each other move and chat.
-2. **DM combat.** Hitscan weapons with spread and ray tests (§5.3), `hitSV` damage and scoring (§5.4), deaths
+2. **[done] DM combat.** Hitscan weapons with spread and ray tests (§5.3), `hitSV` damage and scoring (§5.4), deaths
    and drops (§5.7), pickups, life packs; round end and rotation (§5.12); cvars to clients (§2.6).
 3. **Projectiles and secondaries.** Rockets (remote detonation), grenades, molotov and flames, knives, shield,
-   nuke bot, minibot (§5.5–5.8), the `sv_serverType = 1` quirk.
+   nuke bot, minibot (§5.5–5.8). (Milestone 2 has the projectile machinery for the drops — creation,
+   the shared motion, bounces, deletion one frame late, the state-dump entry — and the
+   `sv_serverType = 1` quirk; the rocket, molotov and flame rules and the client requests remain.)
 4. **Teams.** TDM, CTF (§5.13–5.14), auto-balance, type 3.
 5. **Server administration.** Votes (§5.16), console commands (§7), bans, admin login; the HTTP admin UI and
    multi-session management; the master (§9).
@@ -1329,6 +1348,22 @@ Three references, from cheapest to most faithful:
    scripted clients run against the Go server over WebSockets; per frame, the two message streams must match
    byte for byte (after zeroing padding). This is the strongest check and the one to automate in CI for the
    simulation milestones (2–4).
+
+What exists (milestone 2):
+
+- `server/internal/reftest`: level 1. `cpp/build.sh` extracts the original functions verbatim
+  (`rotateAboutAxis`, `reflect`, the rand helpers, `segmentToSphere`, `Map::rayTest`/`rayTileTest`, the
+  damage part of `Player::hitSV` preprocessed for the dedicated Pro build) into a native driver with MSVC's
+  `rand()` and musl's `cosf`/`sinf`, and writes `testdata/golden.json.gz`; the Go tests match every case bit
+  for bit (3000 rotations, 3000 segment tests, 4000 rays on 20 maps, 2000 spreads, 1000 bounces, 3000
+  damage computations).
+- `server/internal/game/listen_test.go`: level 2 for the sniper. A packet log of a hosted game (the C++
+  listen server in `openbv.wasm`) shooting walls: each bullet's reply is reproduced byte for byte by the Go
+  shot code for one of the 30000 values `rand(0,360)` can take (the listen server's `rand()` is shared with
+  the client's effects, so the draw itself can't be replayed); bullets with the muzzle in a wall are skipped
+  (they depend on the server's interpolated position).
+- A two-client fight on a Go session (two `./play --realtime` processes): kills, drops, pickups, respawns
+  and the scoreboard on both clients.
 
 Throughout: the reference hash checks of the openbv client (headless gasm-run) stay unchanged; the Go server
 gets its own deterministic tests (fixed seed, scripted connections, recorded message streams as golden files).
