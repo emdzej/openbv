@@ -210,9 +210,24 @@ func (s *Server) recvPacket(netID uint32, pk wire.Packet) {
 			s.pickupRequest(p)
 		}
 
-	case proto.ClsvSvclPlayerProjectile, proto.ClsvSvclPlayerShootMelee, proto.ClsvVote,
-		proto.ClsvSvclVoteRequest, proto.ClsvAdminRequest, proto.SvclConsole:
-		// projectiles, secondaries, votes and admin: the next milestones
+	case proto.ClsvSvclPlayerProjectile:
+		var m proto.PlayerProjectileMsg
+		proto.Decode(d, &m)
+		if p := s.player(m.PlayerID, netID); p != nil {
+			s.playerProjectile(p, &m)
+		}
+
+	case proto.ClsvSvclPlayerShootMelee:
+		var m proto.PlayerShootMeleeMsg
+		proto.Decode(d, &m)
+		// ServerRecv.cpp:139: no rate limit (§5.8)
+		if p := s.player(m.PlayerID, netID); p != nil && p.Status == proto.StatusAlive && p.Melee != nil {
+			s.shootMeleeSV(p)
+			s.broadcast(proto.ClsvSvclPlayerShootMelee, &m)
+		}
+
+	case proto.ClsvVote, proto.ClsvSvclVoteRequest, proto.ClsvAdminRequest, proto.SvclConsole:
+		// votes and admin: the next milestones
 
 	default:
 		s.log.Debug("unknown message", "type", pk.Type, "netId", netID)

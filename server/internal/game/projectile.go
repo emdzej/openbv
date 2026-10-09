@@ -122,27 +122,40 @@ func (s *Server) updateProjectiles() {
 	}
 }
 
-// updateProjectile is Projectile::update (GameProjectile.cpp:234) on the server (design/server.md
-// §5.6). Milestone 2 has the items and the shared motion; the rocket, molotov and flame rules come
-// with the projectiles milestone, along with the client requests that create them.
+// updateProjectile is Projectile::update (GameProjectile.cpp:234) on the server (design/server.md §5.6),
+// in the original's order.
 func (s *Server) updateProjectile(p *projectile) {
 	p.LastCF = p.CurrentCF
 	p.CurrentCF.FrameID++
 	p.TimeSinceThrown += delay
 
 	speed := p.CurrentCF.Vel.Length()
-	switch {
-	case p.Type == proto.ProjectileRocket:
+	if p.Type == proto.ProjectileRocket {
 		if speed > 10 {
 			p.CurrentCF.Vel = p.CurrentCF.Vel.Div(speed)
 			speed = 10
 			p.CurrentCF.Vel = p.CurrentCF.Vel.Scale(speed)
 		}
 		p.CurrentCF.Position = p.CurrentCF.Position.Add(p.CurrentCF.Vel.Scale(delay))
+		// the rocket speeds up exponentially
 		p.CurrentCF.Vel = p.CurrentCF.Vel.Add(p.CurrentCF.Vel.Scale(delay).Scale(3))
-	case p.Type == proto.ProjectileMolotov, p.Type == proto.ProjectileFlame && !p.MovementLock:
+	}
+	if p.Type == proto.ProjectileMolotov || (p.Type == proto.ProjectileFlame && !p.MovementLock) {
 		p.CurrentCF.Position = p.CurrentCF.Position.Add(p.CurrentCF.Vel.Scale(delay))
 		p.CurrentCF.Vel[2] -= float32(9.8 * delay)
+	}
+
+	if p.Type == proto.ProjectileFlame {
+		s.updateFlame(p)
+	}
+	// a flame that hits the map stays there (GameProjectile.cpp:585)
+	if p.Type == proto.ProjectileFlame && !p.MovementLock {
+		p2 := p.CurrentCF.Position
+		var normal bvmath.Vec3
+		if s.m.RayTest(p.LastCF.Position, &p2, &normal) {
+			p.MovementLock = true
+			p.CurrentCF.Position = p2.Add(normal.Scale(.1))
+		}
 	}
 
 	bouncing := p.Type == proto.ProjectileGrenade || p.Type == proto.ProjectileLifePack ||
@@ -162,6 +175,7 @@ func (s *Server) updateProjectile(p *projectile) {
 			}
 		}
 	} else {
+		// slow and low: every projectile type stops
 		p.CurrentCF.Vel = bvmath.Vec3{}
 	}
 
@@ -183,12 +197,24 @@ func (s *Server) updateProjectile(p *projectile) {
 		return
 	}
 
+	zookaRadius := float32(3)
+	if s.SV.ZookaRemoteDet.B && s.SV.ServerType.I == serverTypePro {
+		zookaRadius = s.SV.ZookaRadius.F
+	}
 	// `if (gameVar.sv_serverType = 1)` (GameProjectile.cpp:718): an assignment, so every projectile
 	// update switches the server to Pro rules and sets the bazooka damage (design/server.md §8.3.1)
 	s.SV.ServerType.I = serverTypePro
 	s.weapons[proto.WeaponBazooka].Damage = s.SV.ZookaDamage.F
 
 	switch p.Type {
+	case proto.ProjectileRocket:
+		if !p.NeedToBeDeleted {
+			s.rocketCollision(p, zookaRadius)
+		}
+	case proto.ProjectileMolotov:
+		if !p.NeedToBeDeleted {
+			s.molotovCollision(p)
+		}
 	case proto.ProjectileLifePack:
 		if p.NeedToBeDeleted {
 			return
@@ -214,6 +240,148 @@ func (s *Server) updateProjectile(p *projectile) {
 			s.broadcast(proto.SvclPickupItem, &proto.SvclPickupItemMsg{PlayerID: int8(o.ID), ItemType: itemGrenade})
 		}
 	}
+}
+
+// updateFlame is the server's flame block (GameProjectile.cpp:492): a flame follows the player it
+// sticks to for 3 s (unstuck: two NET_SVCL_FLAME_STICK_TO_PLAYER with -1, then 1 s before it can
+// stick again), catches the first player within 0.5 (its thrower only after 0.5 s), and burns what
+// is within 0.5 every 20 frames. The messages carry the vector index, not the uniqueID.
+func (s *Server) updateFlame(p *projectile) {
+	if p.StickToPlayer >= 0 {
+		if o := s.players[p.StickToPlayer]; o != nil {
+			if o.Status == proto.StatusDead {
+				p.StickToPlayer = -1
+			} else {
+				p.CurrentCF.Position = o.CurrentCF.Position
+			}
+		}
+		p.StickFor -= delay
+		if p.StickFor <= 0 {
+			p.StickFor = 0
+			p.StickToPlayer = -1
+			m := proto.SvclFlameStickToPlayerMsg{ProjectileID: int16(p.ProjectileID), PlayerID: -1}
+			s.broadcast(proto.SvclFlameStickToPlayer, &m)
+			p.MovementLock = false
+			p.StickFor = 1
+			s.broadcast(proto.SvclFlameStickToPlayer, &m)
+		}
+	}
+	if p.StickToPlayer == -1 {
+		p.StickFor -= delay
+		if p.StickFor <= 0 {
+			p.StickFor = 0
+			ignore := p.FromID
+			if p.TimeSinceThrown > .5 {
+				ignore = -1
+			}
+			if o := s.playerInRadius(p.CurrentCF.Position, .5, ignore); o != nil {
+				p.MovementLock = true
+				p.StickToPlayer = o.ID
+				p.StickFor = 3
+				s.broadcast(proto.SvclFlameStickToPlayer, &proto.SvclFlameStickToPlayerMsg{
+					ProjectileID: int16(p.ProjectileID), PlayerID: int8(o.ID),
+				})
+			}
+		}
+	}
+	p.DamageTime++
+	if p.DamageTime >= 20 {
+		p.DamageTime = 0
+		s.radiusHit(p.CurrentCF.Position, .5, p.FromID, proto.WeaponMolotov, false)
+	}
+}
+
+// rocketCollision is the rocket part of Projectile::update (GameProjectile.cpp:726): a player within
+// 0.5 of it (not its shooter), a wall, or the shooter's second press (remote detonation) sets it off.
+func (s *Server) rocketCollision(p *projectile, zookaRadius float32) {
+	var owner *Player
+	if p.FromID >= 0 && p.FromID < proto.MaxPlayer {
+		owner = s.players[p.FromID]
+	}
+	clearFlags := func() {
+		// the original dereferenced the shooter without a check (a rocket of a player who left crashed
+		// it); here the flags of a missing shooter are skipped
+		if owner != nil {
+			owner.RocketInAir = false
+			owner.DetonateRocket = false
+		}
+	}
+	if o := s.playerInRadius(p.CurrentCF.Position, .25, -1); o != nil && o.ID != p.FromID {
+		clearFlags()
+		p.NeedToBeDeleted = true
+		pos := o.CurrentCF.Position
+		s.broadcast(proto.SvclExplosion, &proto.SvclExplosionMsg{
+			Position: pos, Normal: [3]float32{0, 0, 1}, Radius: zookaRadius, PlayerID: int8(p.FromID),
+		})
+		s.radiusHit(pos, zookaRadius, p.FromID, proto.WeaponBazooka, false)
+		return
+	}
+	p2 := p.CurrentCF.Position
+	var normal bvmath.Vec3 // CVector3f(): zero when the press, not a wall, sets it off
+	hit := s.m.RayTest(p.LastCF.Position, &p2, &normal)
+	if hit || (owner != nil && owner.DetonateRocket) {
+		clearFlags()
+		p2 = p2.Add(normal.Scale(.1))
+		p.NeedToBeDeleted = true
+		s.broadcast(proto.SvclExplosion, &proto.SvclExplosionMsg{
+			Position: p2, Normal: normal, Radius: zookaRadius, PlayerID: int8(p.FromID),
+		})
+		s.radiusHit(p2, zookaRadius, p.FromID, proto.WeaponBazooka, false)
+	}
+}
+
+// molotovCollision is the molotov part of Projectile::update (GameProjectile.cpp:811): on a player
+// (not its thrower) or a wall it breaks: the sound, and two flames. Kept from the original: on a
+// player both flames get velocity 0 (`vel[0] = 0;(char)(vel[0] * 10);`), the random one being
+// computed and thrown away; on a wall the second flame bounces off it.
+func (s *Server) molotovCollision(p *projectile) {
+	flame := func(vel [3]int8) {
+		m := proto.PlayerProjectileMsg{
+			PlayerID: int8(p.FromID), ProjectileType: proto.ProjectileFlame,
+			Position: shortPos(p.CurrentCF.Position), Vel: vel,
+		}
+		s.spawnProjectile(&m)
+	}
+	sound := func(at bvmath.Vec3) {
+		s.broadcast(proto.SvclPlaySound, &proto.SvclPlaySoundMsg{
+			SoundID: soundMolotov, Volume: 250, Range: 5,
+			Position: [3]uint8{toUChar(at[0]), toUChar(at[1]), toUChar(at[2])},
+		})
+	}
+	if o := s.playerInRadius(p.CurrentCF.Position, .25, p.FromID); o != nil && o.ID != p.FromID {
+		p.NeedToBeDeleted = true
+		sound(p.CurrentCF.Position)
+		flame([3]int8{})
+		_ = p.CurrentCF.Vel.Scale(.5).Add(s.randVec3(bvmath.Vec3{-1, -1, 1}, bvmath.Vec3{1, 1, 2}))
+		flame([3]int8{})
+		return
+	}
+	p2 := p.CurrentCF.Position
+	var normal bvmath.Vec3
+	if s.m.RayTest(p.LastCF.Position, &p2, &normal) {
+		p.CurrentCF.Position = p2.Add(normal.Scale(.1))
+		p.NeedToBeDeleted = true
+		sound(p2)
+		flame([3]int8{})
+		vel := bvmath.Reflect(p.CurrentCF.Vel.Scale(.5), normal).Add(s.randVec3(bvmath.Vec3{-1, -1, 0}, bvmath.Vec3{1, 1, 1}))
+		flame(charVel(vel))
+	}
+}
+
+// soundMolotov is SOUND_MOLOTOV (GameVar.h:46).
+const soundMolotov = 2
+
+// randVec3 is rand(CVector3f, CVector3f) (CVector.cpp): a rand(float, float) per component, built as
+// `CVector3f(rand(x), rand(y), rand(z))`. C++ leaves the order of those calls to the compiler: clang
+// (the openbv client and the reference drivers) draws x, y, z; MSVC on x86 likely drew z first. Which
+// draw lands on which axis changes nothing a player can tell (the seed is the clock); x, y, z keeps the
+// port checkable against the C++ (design/server.md §8.4).
+func (s *Server) randVec3(from, to bvmath.Vec3) bvmath.Vec3 {
+	var v bvmath.Vec3
+	v[0] = s.rand.Float(from[0], to[0])
+	v[1] = s.rand.Float(from[1], to[1])
+	v[2] = s.rand.Float(from[2], to[2])
+	return v
 }
 
 // The pickup kinds of NET_SVCL_PICKUP_ITEM (Game.h).
@@ -275,6 +443,7 @@ func charVel(v bvmath.Vec3) [3]int8 {
 // them: truncation toward zero to 32 bits (saturating), then the low bits.
 func toShort(f float32) int16 { return int16(toInt32(f)) }
 func toChar(f float32) int8   { return int8(toInt32(f)) }
+func toUChar(f float32) uint8 { return uint8(toInt32(f)) }
 
 func toInt32(f float32) int32 {
 	switch {

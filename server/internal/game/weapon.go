@@ -55,17 +55,19 @@ type weapon struct {
 	CurrentImp       float32
 	CurrentFireDelay float32
 	ShotFrom         bvmath.Vec3 // where the last shot started (hitSV's photon and flame falloff)
+	NukeFrameID      int32       // frames since the nuke bot was dropped (Weapon.h)
 }
 
 func newWeapon(d weaponDef) *weapon {
 	return &weapon{weaponDef: d, CurrentImp: d.StartImp}
 }
 
-// update is Weapon::update (Weapon.cpp:146), the server's part: the spread settles back while the
-// owner is alive; the fire delay counts down (the nuke's timer comes with the secondaries).
-func (w *weapon) update(delay float32, ownerAlive bool) {
+// update is Weapon::update (Weapon.cpp:589), the server's part: the spread settles back while the
+// owner is alive and the fire delay counts down; the nuke counts frames while it reloads, and true
+// means its bot is due to go off (nukeFrameID >= 30 * sv_nukeTimer, every frame from then on).
+func (w *weapon) update(delay float32, ownerAlive bool, nukeTimer float32) bool {
 	if !ownerAlive {
-		return
+		return false
 	}
 	if w.CurrentImp > w.StartImp {
 		w.CurrentImp -= float32(delay * 10)
@@ -75,7 +77,12 @@ func (w *weapon) update(delay float32, ownerAlive bool) {
 	}
 	if w.CurrentFireDelay > 0 {
 		w.CurrentFireDelay -= delay
+		if w.ID == proto.WeaponNuclear {
+			w.NukeFrameID++
+			return float32(w.NukeFrameID) >= float32(30*nukeTimer)
+		}
 	}
+	return false
 }
 
 // selectAvailableWeapon is SelectToAvailableWeapon (Game.cpp:226): the first enabled primary.

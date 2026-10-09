@@ -1199,8 +1199,20 @@ Milestone 2 (DM combat):
 | `NET_CLSV_PLAYER_SHOOT` with a weapon ID outside 0..13, or from a player without a weapon, is dropped | The rate check indexed `gameVar.weapons[]` with the client's ID; a player that never spawned has no weapon (null dereference). |
 | A pickup of a dropped "weapon" whose ID isn't a weapon still sends the pickup but doesn't switch weapons | `switchWeapon` indexed the table with it. |
 | `uniqueProjectileID` is per session | One process hosts several sessions; the original's static counter was per process = per server. |
-| `sv_explodingFT` (off by default) logs instead of nuking the shooter | `Server::nukePlayer` comes with the nuke, milestone 3. |
+| ~~`sv_explodingFT` logs instead of nuking the shooter~~ | Milestone 3 ported `Server::nukePlayer`: the flame thrower nukes as in the original. |
 | Struct padding is zero in every message | The C++ sent stack garbage there (e.g. the last byte of `net_svcl_player_shoot`). |
+
+Milestone 3 (projectiles and secondaries):
+
+| Deviation | Why |
+|---|---|
+| `NET_CLSV_SVCL_PLAYER_PROJECTILE` with a weapon ID outside 0..13 (other than grenade/molotov) is dropped | The fire-delay check indexed `gameVar.weapons[]` with it. Any `projectileType` is still accepted, as in the original (§5.6). |
+| A rocket whose shooter has left neither clears his flags nor reads his detonation request (it still flies and explodes) | `players[fromID]` was dereferenced without a check: the original crashed. |
+| `Server::nukePlayer`'s explosion carries `playerID -1` | The original left the field uninitialised. |
+| `radiusHit` for the nuke bot gets a copy of the bot's position | It got a reference to the bot, which a kill of its owner freed during the call (the original read freed memory, usually still the same values). |
+| `rand(CVector3f, CVector3f)` draws x, y, z in that order | C++ leaves the order of the constructor arguments to the compiler: clang (the openbv client, the reference drivers) goes x, y, z, MSVC on x86 likely z, y, x. The draws are the same; only which axis gets which changes, which no player can tell (the seed is the clock), and this order keeps the port checkable. |
+| `Map::collisionClip` and `performCollision`: a neighbour index outside the cell array counts as a wall | The original read past the array (only possible for a bot pushed to the map's edge). Neighbours of edge cells still wrap into the next/previous row, as in the original. |
+| A projectile of an unknown type (a client asked for type 0, 1 or 9+) lives 0 s and is deleted at once | The constructor left `duration` uninitialised for them. |
 
 Arithmetic: all game maths is float32 with every product rounded on its own (Go may fuse `a*b+c` on arm64;
 the C++ and the wasm client don't), `cosf`/`sinf` are musl's (`bvmath/muslmath.go`, the wasm client's libc:
@@ -1304,7 +1316,7 @@ through a command channel processed at the start of a frame (like console input)
 
 ### 10.2 Milestones
 
-Status (October 2026): milestones 1 and 2 are done (`server/`); the rest is to do.
+Status (October 2026): milestones 1 to 3 are done (`server/`); the rest is to do.
 
 1. **[done] Wire + handshake + presence.** `proto` with golden tests for every struct; transport; session loop;
    connect/disconnect events; the handshake and state dump (§2.2); ping/pong (§5.11); chat; name/skin;
@@ -1312,10 +1324,12 @@ Status (October 2026): milestones 1 and 2 are done (`server/`); the rest is to d
    map download. *Done when:* two openbv clients join a Go DM session, see each other move and chat.
 2. **[done] DM combat.** Hitscan weapons with spread and ray tests (§5.3), `hitSV` damage and scoring (§5.4), deaths
    and drops (§5.7), pickups, life packs; round end and rotation (§5.12); cvars to clients (§2.6).
-3. **Projectiles and secondaries.** Rockets (remote detonation), grenades, molotov and flames, knives, shield,
-   nuke bot, minibot (§5.5–5.8). (Milestone 2 has the projectile machinery for the drops — creation,
-   the shared motion, bounces, deletion one frame late, the state-dump entry — and the
-   `sv_serverType = 1` quirk; the rocket, molotov and flame rules and the client requests remain.)
+3. **[done] Projectiles and secondaries.** Rockets (remote detonation), grenades, molotov and flames, knives,
+   shield, nuke bot, minibot (§5.5–5.8), radius damage, `sv_explodingFT`. Checked against the original
+   `Projectile::update`, `Game::radiusHit`, `CMiniBot::Think`, `Game::shootMinibotSV` and
+   `Map::performCollision`/`collisionClip` compiled natively (`server/internal/reftest/cpp`), bit for bit:
+   700 projectiles over 40,102 frames (every message, radius hit, state field and rand() state), 400
+   minibots, 600 radius hits, 1,500 collisions; and with two openbv clients on a Go session.
 4. **Teams.** TDM, CTF (§5.13–5.14), auto-balance, type 3.
 5. **Server administration.** Votes (§5.16), console commands (§7), bans, admin login; the HTTP admin UI and
    multi-session management; the master (§9).

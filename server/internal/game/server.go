@@ -96,6 +96,10 @@ type Server struct {
 	uniqueProjectileID int32 // Projectile::uniqueProjectileID: never reset
 
 	sent func(dest int32, typ uint16, msg any) // tests: every message sent
+	// tests: radiusHit's calls go here instead (the projectile reference cases record them)
+	radiusHitHook func(pos bvmath.Vec3, radius float32, fromID, weaponID int, sameDmg bool)
+	// tests: hitSV's calls go here instead
+	hitSVHook func(v *Player, weaponID int, from *Player, damage float32)
 }
 
 // New hosts a game for a session (Server::host, Server.cpp:150): its map is the first of the
@@ -203,6 +207,9 @@ func (s *Server) send(dest int32, typ uint16, msg any) {
 }
 
 func (s *Server) sendUDP(dest int32, typ uint16, msg any) {
+	if s.sent != nil {
+		s.sent(dest, typ, msg)
+	}
 	s.net.Send(dest, typ, proto.Encode(msg), wire.UDP)
 }
 
@@ -348,15 +355,15 @@ func (s *Server) Frame() {
 }
 
 // gameUpdate is Game::update (Game.cpp:258) on the server: (votes: milestone 5) the players while
-// playing, each followed by its photon beam and the check that its weapons are still allowed; then
-// the projectiles, round over or not. (Minibot wall collisions: milestone 3.)
+// playing, each followed by its photon beam and the check that its weapons are still allowed; the
+// minibots' wall collisions; then the projectiles, round over or not.
 func (s *Server) gameUpdate() {
 	if s.roundState == proto.GamePlaying {
 		for i, p := range s.players {
 			if p == nil {
 				continue
 			}
-			p.update(delay, s.SV.CubicMotion.B)
+			p.update(s, delay, s.SV.CubicMotion.B)
 			s.photonTick(i)
 			if p = s.players[i]; p == nil { // a hit can't delete a player, but stay safe
 				continue
@@ -369,6 +376,7 @@ func (s *Server) gameUpdate() {
 			}
 		}
 	}
+	s.minibotCollisions()
 	s.updateProjectiles()
 }
 
@@ -458,9 +466,11 @@ func (s *Server) kick(i int) {
 	s.broadcast(proto.SvclPlayerDisconnect, &proto.SvclPlayerDisconnectMsg{PlayerID: int8(i)})
 }
 
-// killPlayer is Player::kill (Player.cpp:232), the server's (silent) side.
+// killPlayer is Player::kill (Player.cpp:232), the server's (silent) side; the minibot goes with its
+// owner.
 func (s *Server) killPlayer(p *Player) {
 	p.Status = proto.StatusDead
+	p.Minibot = nil
 	for f := 0; f < 2; f++ {
 		if int(s.flagState[f]) == p.ID {
 			s.flagState[f] = -1
@@ -499,7 +509,18 @@ func (s *Server) sendCoordFrames() {
 					Vel:       [3]int8{int8(cf.Vel[0] * 10), int8(cf.Vel[1] * 10), int8(cf.Vel[2] * 10)},
 				})
 			}
-			// (the minibot's frame goes here: milestone 3)
+			// the minibot's frame (Server.cpp:1163), to everyone, its owner too, with the owner's frame ID
+			if pj.Status == proto.StatusAlive && pj.Minibot != nil {
+				bcf := &pj.Minibot.CurrentCF
+				s.sendUDP(dest, proto.SvclMinibotCoordFrame, &proto.SvclMinibotCoordFrameMsg{
+					PlayerID:  int8(j),
+					BaboNetID: int32(pj.BabonetID),
+					FrameID:   pj.CurrentCF.FrameID,
+					MousePos:  [3]int16{int16(bcf.MousePosOnMap[0] * 100), int16(bcf.MousePosOnMap[1] * 100), int16(bcf.MousePosOnMap[2] * 100)},
+					Position:  [3]int16{int16(bcf.Position[0] * 100), int16(bcf.Position[1] * 100), int16(bcf.Position[2] * 100)},
+					Vel:       [3]int8{int8(bcf.Vel[0] * 10), int8(bcf.Vel[1] * 10), int8(bcf.Vel[2] * 10)},
+				})
+			}
 			s.sendUDP(dest, proto.SvclPlayerPing, &proto.SvclPlayerPingMsg{PlayerID: int8(j), Ping: int16(pj.Ping)})
 		}
 		s.sendUDP(dest, proto.SvclSynchronizeTimer, &proto.SvclSynchronizeTimerMsg{

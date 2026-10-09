@@ -19,7 +19,7 @@
 ./play --headless 600 --screenshot /tmp/bv.png      # anything else goes to gasm-run
 ```
 
-`WINDOW=1280x960` sets the window's size (default 1024x768; it can be resized), `NET=host,...` the
+`WINDOW=1920x1080` sets the window's size (default 1600x900; it can be resized), `NET=host,...` the
 hosts the game may reach without asking (default `127.0.0.1,localhost`).
 
 ## CMake
@@ -32,7 +32,7 @@ cmake -S . -B build-gasm -DOPENBV_PLATFORM=gasm -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE=$GASM/sdk/c/cmake/gasm-toolchain.cmake -DWASI_SDK_PREFIX=$GASM/tools/wasi-sdk
 cmake --build build-gasm -j
 $GASM/runners/native/target/release/gasm-run build-gasm/openbv.wasm \
-  --asset-dir ref/BaboViolent2/BaboViolent2/Content --window 1024x768
+  --asset-dir ref/BaboViolent2/BaboViolent2/Content --window 1600x900
 ```
 
 The game's files are gasm assets: `--asset-dir` exposes a folder (names relative to it, looked up

@@ -145,8 +145,7 @@ func (s *Server) shootOne(p *Player, nuzzleID int8, imp float32, p1, p2 bvmath.V
 			}
 			p2 = p2.Scale(mult)
 			if s.SV.ExplodingFT.B && p.SecondsFired/s.SV.FtExpirationTimer.F > 1 {
-				// Server::nukePlayer: comes with the nuke (milestone 3); sv_explodingFT is off by default
-				s.log.Debug("exploding flame thrower (not yet ported)", "player", p.ID)
+				s.nukePlayer(p.ID)
 			}
 		} else {
 			p2 = p2.Scale(s.SV.FtMaxRange.F)
@@ -278,6 +277,10 @@ func (s *Server) photonTick(i int) {
 // radiusHit is Game::radiusHit (Game.cpp:1592): everyone within radius of pos with no wall between
 // (the dead too; hitSV ignores them), knives sparing their owner.
 func (s *Server) radiusHit(pos bvmath.Vec3, radius float32, fromID, weaponID int, sameDmg bool) {
+	if s.radiusHitHook != nil {
+		s.radiusHitHook(pos, radius, fromID, weaponID, sameDmg)
+		return
+	}
 	if fromID < 0 || fromID >= proto.MaxPlayer || s.players[fromID] == nil {
 		return
 	}
@@ -309,6 +312,10 @@ func (s *Server) radiusHit(pos bvmath.Vec3, radius float32, fromID, weaponID int
 // falloff, the shield, spawn immunity, instagib), the hit message, and on death the drops and the
 // scores (design/server.md §5.4). damage -1 is the weapon's default.
 func (s *Server) hitSV(v *Player, weaponID int, from *Player, damage float32) {
+	if s.hitSVHook != nil {
+		s.hitSVHook(v, weaponID, from, damage)
+		return
+	}
 	var shotFrom bvmath.Vec3
 	if from.Weapon != nil {
 		shotFrom = from.Weapon.ShotFrom
@@ -501,4 +508,87 @@ func (s *Server) pickupRequest(p *Player) {
 			return
 		}
 	}
+}
+
+// playerProjectile is NET_CLSV_SVCL_PLAYER_PROJECTILE (ServerRecv.cpp:1025): a rocket, grenade or
+// molotov a client throws (the server takes any projectile type, §5.6). Alive, or dead for less than
+// 0.2 s with a grenade, molotov or rocket; the rocket needs the bazooka in hand, and with remote
+// detonation a second press sets the rocket in the air off instead. Everything but grenades and
+// molotovs is held to the weapon's fire delay. The request goes back to everyone with its uniqueID.
+func (s *Server) playerProjectile(p *Player, m *proto.PlayerProjectileMsg) {
+	throwable := m.WeaponID == proto.WeaponGrenade || m.WeaponID == proto.WeaponMolotov
+	if !(p.Status == proto.StatusAlive || (p.Status == proto.StatusDead &&
+		(throwable || m.ProjectileType == proto.ProjectileRocket) && p.TimeDead < .2)) {
+		return
+	}
+	if m.ProjectileType == proto.ProjectileMolotov && !s.SV.EnableMolotov.B {
+		return
+	}
+	if m.ProjectileType == proto.ProjectileRocket {
+		if p.weaponID() != proto.WeaponBazooka {
+			return
+		}
+		if s.SV.ZookaRemoteDet.B && s.SV.ServerType.I == serverTypePro {
+			if p.RocketInAir && p.MfElapsedSinceLastShot > .25 {
+				p.DetonateRocket = true
+				return
+			}
+		}
+	}
+	if !throwable {
+		// the original indexed its weapon table with the client's weaponID (§8.4: out of range: dropped)
+		if m.WeaponID < 0 || int(m.WeaponID) > proto.WeaponMinibot {
+			return
+		}
+		if !(float32(p.MfElapsedSinceLastShot+.1) > s.weapons[m.WeaponID].FireDelay) {
+			return
+		}
+		if !s.spawnProjectile(m) {
+			return
+		}
+		if m.ProjectileType == proto.ProjectileRocket {
+			p.RocketInAir = true
+		}
+		p.MfElapsedSinceLastShot = 0
+	} else if !s.spawnProjectile(m) {
+		return
+	}
+	s.broadcast(proto.ClsvSvclPlayerProjectile, m)
+}
+
+// shootMeleeSV is Weapon::shootMeleeSV (Weapon.cpp:449): the secondary of an alive player. Knives
+// hit everyone in sight within 1 m for 0.6, the nuke drops its bot (and restarts its count), the
+// shield protects for 2 s, the minibot drops a turret.
+func (s *Server) shootMeleeSV(p *Player) {
+	w := p.Melee
+	w.CurrentFireDelay = w.FireDelay
+	p.FireFrameDelay = 2
+	switch w.ID {
+	case proto.WeaponKnives:
+		s.radiusHit(p.CurrentCF.Position, 1, p.ID, proto.WeaponKnives, true)
+	case proto.WeaponNuclear:
+		s.spawnNukeBotSV(p)
+		w.NukeFrameID = 0
+	case proto.WeaponShield:
+		p.Protection = 2
+	case proto.WeaponMinibot:
+		if p.Minibot == nil {
+			s.spawnMiniBotSV(p)
+		}
+	}
+}
+
+// nukePlayer is Server::nukePlayer (Server.cpp:1534), used by sv_explodingFT (and the console's nuke
+// commands): a nuke-sized explosion on a playing player. The original left the message's playerID
+// uninitialised; it is -1 here (nobody's).
+func (s *Server) nukePlayer(i int) {
+	p := s.players[i]
+	if p == nil || (p.TeamID != proto.TeamRed && p.TeamID != proto.TeamBlue) {
+		return
+	}
+	pos := p.CurrentCF.Position
+	s.broadcast(proto.SvclExplosion, &proto.SvclExplosionMsg{
+		Position: pos, Normal: [3]float32{0, 0, 1}, Radius: s.SV.NukeRadius.F, PlayerID: -1,
+	})
+	s.radiusHit(pos, s.SV.NukeRadius.F, p.ID, proto.WeaponNuclear, false)
 }

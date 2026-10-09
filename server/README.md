@@ -4,14 +4,16 @@ Babo Violent 2.11 game servers for the openbv client, in Go: one process runs se
 game server of its own, with its port, settings and players), with an admin page. The rules are a port of
 the original's `Server*.cpp` and the parts of the game it runs; `design/server.md` is the specification.
 
-**State:** milestones 1 and 2 of `design/server.md` §10.2. Players connect, get the original's handshake and
+**State:** milestones 1 to 3 of `design/server.md` §10.2. Players connect, get the original's handshake and
 state dump (or download the map), choose teams, spawn, move, see each other and chat; pings, timeouts,
 idling, the join message, round end and map rotation. Deathmatch combat: the hitscan weapons (SMG, shotgun,
 sniper, dual machine gun, chain gun, photon rifle with its lingering beam, flame thrower) with the
 original's spread, fire-rate checks and ray tests; damage with the Pro values, shields, spawn immunity and
 instagib; kills, scores, the drops (life pack, weapon, grenades) and their pickups; the `sv_serverType = 1`
-quirk. Rockets, grenades, molotovs, the secondaries (knives, nuke, shield, minibot), CTF and the team rules,
-votes and the master server (the in-game Game Browser) come next; their messages are accepted and ignored.
+quirk. Projectiles and secondaries: rockets (remote detonation), grenades, molotovs and their flames
+(sticking to players, burning), radius damage, the knives, the shield, the nuke bot, the minibot turret
+(its aim, shots and wall collisions, its coord frames), `sv_explodingFT`. CTF and the team rules, votes
+and the master server (the in-game Game Browser) come next; their messages are accepted and ignored.
 
 ## Run
 
@@ -58,10 +60,10 @@ played first), `port` (the session listens there).
 | `internal/bbnet` | baboNet's server semantics: one event per update, admission at half-second checks, NetIDs, packet order |
 | `internal/proto` | Every message struct, byte for byte (checked against `design/server.md` Appendix A) |
 | `internal/bvmath` | float32 vectors (no fused operations), `rotateAboutAxis` with musl's `cosf`/`sinf`, `segmentToSphere`, `cubicSpline`, MSVC's `rand()` and the game's `rand` helpers |
-| `internal/bvmap` | `.bvm` maps, all four versions; `rayTest` |
+| `internal/bvmap` | `.bvm` maps, all four versions; `rayTest`; the cell collisions (`performCollision`, `collisionClip`) |
 | `internal/cvar` | The `sv_*` variables, their text formats and the engine's parsing |
-| `internal/game` | The server: the frame (`Server::update`), the messages (`Server::recvPacket`), players, weapons, shooting and damage (`combat.go`), projectiles |
-| `internal/reftest` | Values from the original C++ for the tests: `cpp/build.sh` compiles the original functions (extracted verbatim) and writes `testdata/golden.json.gz` |
+| `internal/game` | The server: the frame (`Server::update`), the messages (`Server::recvPacket`), players, weapons, shooting and damage (`combat.go`), projectiles (`projectile.go`), the minibot and nuke bot (`minibot.go`) |
+| `internal/reftest` | Values from the original C++ for the tests: `cpp/build.sh` compiles the original functions (extracted verbatim) and writes `testdata/golden.json.gz` and `testdata/projectiles.json.gz` |
 | `internal/session` | Sessions: the 30 Hz loop, the manager with per-session ports |
 | `internal/admin` | The admin API and page |
 
@@ -80,6 +82,12 @@ Against the original (design/server.md §10.3):
 - `internal/reftest`: the bit-exact core — ray tests, segment-to-sphere, rotations, the bullet spread with
   its `rand()` calls, bounces, the damage formula — against values computed by the original code
   (`internal/reftest/cpp/build.sh` regenerates them; needs clang, python3 and unifdef; CI only reads them).
+- `internal/game/projectile_ref_test.go`: the original `Projectile::update`, `Game::radiusHit`,
+  `CMiniBot::Think`, `Game::shootMinibotSV` and the map collisions, compiled natively with stand-ins that
+  record what they send (`cpp/proj_head.cpp`, `cpp/proj_main.cpp`): 700 projectiles of every kind run
+  frame by frame (40,102 frames: every message's bytes, every radius hit, the state, the rand() state),
+  400 minibots, 600 radius hits, 1,500 collisions — bit for bit. `internal/game/secondary_test.go` checks
+  the request paths (remote detonation, knives, the nuke's timer, the minibot, the shield, a molotov).
 - `internal/game/listen_test.go`: sniper shots recorded from the C++ listen server (a game hosted in the
   client, `--param netlog=1`), each reply reproduced byte for byte.
 - By hand: the client logs every packet with `--param netlog=1`. Hosting a game in the client (the

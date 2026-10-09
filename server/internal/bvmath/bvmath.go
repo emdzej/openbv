@@ -159,6 +159,9 @@ func NewRand(seed uint32) *Rand { return &Rand{seed: seed} }
 // Seed is srand.
 func (r *Rand) Seed(seed uint32) { r.seed = seed }
 
+// State is the generator's state (tests compare it with the C++'s).
+func (r *Rand) State() uint32 { return r.seed }
+
 // Int is rand(): 0..32767.
 func (r *Rand) Int() int32 {
 	r.seed = r.seed*214013 + 2531011

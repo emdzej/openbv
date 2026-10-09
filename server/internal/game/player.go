@@ -132,8 +132,13 @@ type Player struct {
 	FrameSinceLast, LastFrame, CurrentFrame, SpeedHackCount int32
 
 	GrenadeLeft, MolotovLeft int
-	IsAdmin                  bool
-	UserID                   int
+	// the bazooka's remote detonation (ServerRecv.cpp:1041, GameProjectile.cpp:733)
+	RocketInAir, DetonateRocket bool
+	// the minibot or nuke bot (Player.h, _PRO_), nil without one
+	Minibot *minibot
+
+	IsAdmin bool
+	UserID  int
 }
 
 // newPlayer is Player::Player (Player.cpp:61).
@@ -213,7 +218,7 @@ func (p *Player) updatePing(delay float32) {
 
 // update is the server's part of Player::update (PlayerUpdate.cpp:53); weapons and the minibot come
 // with the combat milestones.
-func (p *Player) update(delay float32, cubic bool) {
+func (p *Player) update(s *Server, delay float32, cubic bool) {
 	p.updatePing(delay)
 	if p.TeamID != proto.TeamSpectator {
 		p.TimeIdle += delay
@@ -243,6 +248,10 @@ func (p *Player) update(delay float32, cubic bool) {
 	}
 	p.LastCF.assign(p.CurrentCF)
 	p.CurrentCF.FrameID++
+	if p.Minibot != nil {
+		p.Minibot.LastCF = p.Minibot.CurrentCF
+		p.Minibot.CurrentCF.FrameID++
+	}
 	// the rapid-fire statistic (nothing reads it on the server)
 	p.SecondPassed += delay
 	if p.SecondPassed > 3 && p.ShotCount > 1 {
@@ -275,10 +284,12 @@ func (p *Player) update(delay float32, cubic bool) {
 	}
 	alive := p.Status == proto.StatusAlive
 	if p.Weapon != nil {
-		p.Weapon.update(delay, alive)
+		p.Weapon.update(delay, alive, s.SV.NukeTimer.F)
 	}
 	if p.Melee != nil {
-		p.Melee.update(delay, alive)
+		if p.Melee.update(delay, alive, s.SV.NukeTimer.F) {
+			s.nukeBotExplode(p)
+		}
 	}
 
 	if p.Status == proto.StatusDead {
@@ -288,6 +299,9 @@ func (p *Player) update(delay float32, cubic bool) {
 	if p.Status == proto.StatusAlive {
 		p.TimeAlive += delay
 		p.TimePlayedCurGame += delay
+		if p.Minibot != nil {
+			s.updateMinibot(p, delay)
+		}
 		// a remote entity on the server: interpolated from the client's frames
 		p.CurrentCF.interpolate(&p.CFProgression, &p.NetCF0, &p.NetCF1, delay, cubic)
 		p.CurrentCF.Position[2] = .25

@@ -126,3 +126,167 @@ func Load() (*Golden, error) {
 	})
 	return golden, err
 }
+
+// ProjEvent is one thing Projectile::update did: a message (Send: the type ID, B: the bytes in hex,
+// padding zeroed) or a radiusHit call.
+type ProjEvent struct {
+	Send   *int   `json:"send"`
+	B      string `json:"b"`
+	Radius *V     `json:"radius"`
+	R      F      `json:"r"`
+	From   int    `json:"from"`
+	W      int    `json:"w"`
+	Same   bool   `json:"same"`
+}
+
+// ProjFrame is the projectile after one update. Flags: per player rocketInAir, detonateRocket,
+// nbGrenadeLeft, life (bits).
+type ProjFrame struct {
+	Ev          []ProjEvent `json:"ev"`
+	Pos         V           `json:"pos"`
+	Vel         V           `json:"vel"`
+	Del         bool        `json:"del"`
+	Lock        bool        `json:"lock"`
+	Stick       int         `json:"stick"`
+	StickFor    F           `json:"stickFor"`
+	Duration    F           `json:"duration"`
+	DamageTime  int         `json:"damageTime"`
+	ServerType  int         `json:"serverType"`
+	ZookaDamage F           `json:"zookaDamage"`
+	Flags       [][]any     `json:"flags"`
+	Rand        uint32      `json:"rand"`
+}
+
+type ProjPlayer struct {
+	Status      int  `json:"status"`
+	Grenades    int  `json:"grenades"`
+	Life        F    `json:"life"`
+	RocketInAir bool `json:"rocketInAir"`
+	Detonate    bool `json:"detonate"`
+	Pos         V    `json:"pos"`
+}
+
+// ProjCase is a map, players and one projectile run through the original Projectile::update
+// (cpp/proj_main.cpp).
+type ProjCase struct {
+	Width  int   `json:"w"`
+	Height int   `json:"h"`
+	Cells  []int `json:"cells"`
+	SV     struct {
+		RemoteDet   bool `json:"remoteDet"`
+		ServerType  int  `json:"serverType"`
+		ZookaRadius F    `json:"zookaRadius"`
+		ZookaDamage F    `json:"zookaDamage"`
+	} `json:"sv"`
+	Players    []ProjPlayer `json:"players"`
+	KillAt     int          `json:"killAt"`
+	KillWho    int          `json:"killWho"`
+	Seed       uint32       `json:"seed"`
+	Type       int          `json:"type"`
+	Pos        V            `json:"pos"`
+	Vel        V            `json:"vel"`
+	From       int          `json:"from"`
+	Stick      int          `json:"stick"`
+	StickFor   F            `json:"stickFor"`
+	Thrown     F            `json:"thrown"`
+	Lock       bool         `json:"lock"`
+	DamageTime int          `json:"damageTime"`
+	Index      int          `json:"index"`
+	Frames     []ProjFrame  `json:"frames"`
+}
+
+// RefMap is a map in the cases: cells -1 passable, else the wall height.
+type RefMap struct {
+	Width  int   `json:"w"`
+	Height int   `json:"h"`
+	Cells  []int `json:"cells"`
+}
+
+// MinibotCase is a minibot thinking for 24 frames (CMiniBot::Think, Game::shootMinibotSV): events are
+// hitSV calls ({hit, w, from, damage}) and messages.
+type MinibotCase struct {
+	RefMap
+	GameType int `json:"gameType"`
+	Gun      F   `json:"gun"`
+	Players  []struct {
+		Status int `json:"status"`
+		Team   int `json:"team"`
+		Pos    V   `json:"pos"`
+	} `json:"players"`
+	Bot      V      `json:"bot"`
+	FireRate F      `json:"fireRate"`
+	Nuke     bool   `json:"nuke"`
+	Seed     uint32 `json:"seed"`
+	Frames   []struct {
+		Ev       []HitEvent `json:"ev"`
+		Mouse    V          `json:"mouse"`
+		FireRate F          `json:"fireRate"`
+		Rand     uint32     `json:"rand"`
+	} `json:"frames"`
+}
+
+// HitEvent is a hitSV call or a message.
+type HitEvent struct {
+	Hit    *int   `json:"hit"`
+	W      int    `json:"w"`
+	From   int    `json:"from"`
+	Damage F      `json:"damage"`
+	Send   *int   `json:"send"`
+	B      string `json:"b"`
+}
+
+// RadiusCase is one Game::radiusHit.
+type RadiusCase struct {
+	RefMap
+	Weapon  int  `json:"weapon"`
+	Damage  F    `json:"damage"`
+	Pos     V    `json:"pos"`
+	R       F    `json:"r"`
+	From    int  `json:"from"`
+	Same    bool `json:"same"`
+	Players []struct {
+		Status int `json:"status"`
+		Pos    V   `json:"pos"`
+	} `json:"players"`
+	Ev []HitEvent `json:"ev"`
+}
+
+// CollisionCase is Map::performCollision then Map::collisionClip.
+type CollisionCase struct {
+	RefMap
+	Last      V `json:"last"`
+	Pos       V `json:"pos"`
+	Vel       V `json:"vel"`
+	R         F `json:"r"`
+	AfterPos  V `json:"afterPos"`
+	AfterVel  V `json:"afterVel"`
+	AfterLast V `json:"afterLast"`
+	Clipped   V `json:"clipped"`
+}
+
+// Projectiles is testdata/projectiles.json.gz (cpp/proj_main.cpp).
+type Projectiles struct {
+	Proj      []ProjCase      `json:"proj"`
+	Minibot   []MinibotCase   `json:"minibot"`
+	Radius    []RadiusCase    `json:"radius"`
+	Collision []CollisionCase `json:"collision"`
+}
+
+// LoadProjectiles reads testdata/projectiles.json.gz.
+func LoadProjectiles() (*Projectiles, error) {
+	_, file, _, _ := runtime.Caller(0)
+	f, err := os.Open(filepath.Join(filepath.Dir(file), "testdata", "projectiles.json.gz"))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	z, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	var g Projectiles
+	if err := json.NewDecoder(z).Decode(&g); err != nil {
+		return nil, err
+	}
+	return &g, nil
+}

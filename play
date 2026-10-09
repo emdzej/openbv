@@ -12,8 +12,8 @@
 #   ./play --headless 600 --screenshot /tmp/bv.png      (anything else goes to gasm-run)
 #   ./play --help                   this
 #
-# Environment: WINDOW=1280x960 (default 1024x768; drag to resize), GASM_DIR=../gasm (the gasm checkout
-# whose runner and SDK are used), NET=host,host (hosts the game may reach; default 127.0.0.1 and
+# Environment: WINDOW=1920x1080 (default 1600x900; drag to resize), GASM_DIR=../gasm (the gasm checkout
+# whose runner and SDK are used; without a built one, the pinned release in .deps/), NET=host,host (hosts the game may reach; default 127.0.0.1 and
 # localhost, for a local server), LOG=file (also write the output there).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -23,12 +23,25 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   exit 0
 fi
 
+# a built gasm checkout (../gasm, or GASM_DIR) if there is one, else the pinned release (.deps/)
 GASM_DIR=${GASM_DIR:-../gasm}
 RUN="$GASM_DIR/runners/native/target/release/gasm-run"
 TOOLCHAIN="$GASM_DIR/sdk/c/cmake/gasm-toolchain.cmake"
 WASI_SDK="$GASM_DIR/tools/wasi-sdk"
-[[ -x "$RUN" ]] || { echo "play: no gasm-run at $RUN (build it in $GASM_DIR: make, or set GASM_DIR)" >&2; exit 1; }
-[[ -x "$WASI_SDK/bin/clang" ]] || { echo "play: no wasi-sdk at $WASI_SDK (make in $GASM_DIR fetches it)" >&2; exit 1; }
+if [[ ! -x "$RUN" ]]; then
+  case "$(uname -s)-$(uname -m)" in
+    Darwin-*) plat=macos-universal ;;
+    Linux-x86_64) plat=linux-x86_64 ;;
+    Linux-aarch64) plat=linux-arm64 ;;
+    *) echo "play: no gasm-run at $RUN and no released runner for $(uname -sm)" >&2; exit 1 ;;
+  esac
+  RUN="$(tools/fetch-gasm-runner.sh "$plat")/gasm-run"
+fi
+if [[ ! -x "$WASI_SDK/bin/clang" || ! -f "$TOOLCHAIN" ]]; then
+  tools/fetch-gasm-sdk.sh >/dev/null
+  TOOLCHAIN="$PWD/.deps/gasm-c-sdk/cmake/gasm-toolchain.cmake"
+  WASI_SDK="$PWD/.deps/wasi-sdk"
+fi
 
 # the vanilla data: Daivuk's GPL-3.0 repository at the commit src/ was taken from
 UPSTREAM=https://github.com/Daivuk/BaboViolent2.git
@@ -84,7 +97,7 @@ if [[ "$FRESH" == 1 ]]; then
 fi
 
 cmd=("$RUN" build-gasm/openbv.wasm --asset-dir "$DATA" ${storage[@]+"${storage[@]}"}
-  --allow-net="${NET:-127.0.0.1,localhost}" --window "${WINDOW:-1024x768}" ${pass[@]+"${pass[@]}"})
+  --allow-net="${NET:-127.0.0.1,localhost}" --window "${WINDOW:-1600x900}" ${pass[@]+"${pass[@]}"})
 echo "playing: data $DATA, saves '$STORAGE'"
 if [[ -n "${LOG:-}" ]]; then
   "${cmd[@]}" 2>&1 | tee "$LOG"
