@@ -10,8 +10,12 @@ openbv is early. The game runs and plays locally and online, on the openbv serve
 - Settings: `bv2.cfg` and `bv2.db` changes saved in gasm storage.
 - Hosting a game: the server in the same process, the client joining it (tried with free for all
   on CTF-Daivuk; the other game types and the map rotation not yet).
-- Playing on a hosted game: spawning, moving, weapons, projectiles, particles, the HUD, the minimap,
-  the console.
+- Playing on a hosted game: spawning, moving, weapons, projectiles, particles, the minimap, the
+  console.
+- The HUD, redesigned like the menus: the clock and team scores in one panel, a slim health gauge with
+  the number (green to red), the chain gun's heat as a second gauge, the secondaries on small tiles,
+  themed reload bars, banners for respawning and round ends, a scoreboard with team bands, aligned
+  columns and the local player marked. It shows what the original showed.
 - Sound: effects (2D and 3D) and music.
 - Keyboard and mouse as DirectInput read them; the first gamepad's sticks and triggers.
 - The browser: [/play/](/play/) runs the same module on WebGL 2, with the data from the site (cached
@@ -32,6 +36,5 @@ openbv is early. The game runs and plays locally and online, on the openbv serve
 - **The Prozac mod's data** runs with openbv's font (Prozac ships `fonts/font.tga` where the game
   loads `fonts/babo.tga`; openbv's own font covers both); the rest of Prozac's changes to the game
   aren't ported.
-- **The HUD's redesign.** It is laid out for 16:9 but keeps the original's look for now.
 - **The account server** (profiles, friends, clans, stats) is gone; those requests fail as an
   unreachable server did.

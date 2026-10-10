@@ -20,93 +20,106 @@
 #include "Game.h"
 #include "ui.h"
 #include "Helper.h"
+#include "UITheme.h"
 
 
-void renderStatsSlice(const CVector4f & sliceColor, char * text1, char* c1, char* c2, char* c3, char* c4, char* c5, char * pingText, int & vPos)
+// openbv: the scoreboard is redrawn in the menus' style (UITheme.h): one centred panel, a header row of
+// muted column labels, a band per team in its colour, player rows with the local player marked by the
+// accent, numbers right-aligned in fixed columns. What it shows is the original's.
+namespace
 {
-#ifndef _DX_
-	glDisable(GL_TEXTURE_2D);
-	glColor4fv(sliceColor.s);
-	glBegin(GL_QUADS);
-		glVertex2i(150, vPos);
-		glVertex2i(150, vPos+22);
-		glVertex2i(450, vPos+22);
-		glVertex2i(450, vPos);
-	glEnd();
-	glBegin(GL_QUADS);
-		glVertex2i(452, vPos);
-		glVertex2i(452, vPos+22);
-		glVertex2i(500, vPos+22);
-		glVertex2i(500, vPos);
-	glEnd();
-	glBegin(GL_QUADS);
-		glVertex2i(502, vPos);
-		glVertex2i(502, vPos+22);
-		glVertex2i(550, vPos+22);
-		glVertex2i(550, vPos);
-	glEnd();
-	glBegin(GL_QUADS);
-		glVertex2i(552, vPos);
-		glVertex2i(552, vPos+22);
-		glVertex2i(600, vPos+22);
-		glVertex2i(600, vPos);
-	glEnd();
-	glBegin(GL_QUADS);
-		glVertex2i(602, vPos);
-		glVertex2i(602, vPos+22);
-		glVertex2i(650, vPos+22);
-		glVertex2i(650, vPos);
-	glEnd();
-	glBegin(GL_QUADS);
-		glVertex2i(652, vPos);
-		glVertex2i(652, vPos+22);
-		glVertex2i(700, vPos+22);
-		glVertex2i(700, vPos);
-	glEnd();
-	glBegin(GL_QUADS);
-		glVertex2i(702, vPos);
-		glVertex2i(702, vPos+22);
-		glVertex2i(750, vPos+22);
-		glVertex2i(750, vPos);
-	glEnd();
-	glEnable(GL_TEXTURE_2D);
+	enum SliceKind { SLICE_HEADER, SLICE_SECTION, SLICE_ROW, SLICE_SELF, SLICE_MUTED };
 
-	glColor3f(1,1,1);
-#endif
-	printLeftText(154, (float)vPos-2, 28, CString(text1));
-	printRightText(500, (float)vPos-2, 28, CString(c1));
-	printRightText(550, (float)vPos-2, 28, CString(c2));
-	printRightText(600, (float)vPos-2, 28, CString(c3));
-	printRightText(650, (float)vPos-2, 28, CString(c4));
-	printRightText(700, (float)vPos-2, 28, CString(c5));
-	printRightText(750, (float)vPos-2, 28, CString(pingText));
-	// Ping
-	vPos += 26;
+	const float SB_W = 720;
+	const float SB_X = (UI_W - SB_W) / 2;
+	const float SB_PAD = 14;
+	const float SB_ROW = 28;
+	const float SB_TEXT = 22;
+	const float SB_COL = 74;   // the numeric columns, right-aligned, from the right edge leftwards
+
+	bool measuring = false;    // the first pass only adds up the height, for the panel behind
+	int columns = 5;           // the table's numeric columns: as many as the header names
+
+	const UIColor teamBlue = {0.24f, 0.48f, 1.00f, 1};
+	const UIColor teamRed  = {0.90f, 0.28f, 0.30f, 1};
+	const UIColor teamNone = {0.75f, 0.78f, 0.84f, 1};
+
+	// the ping in the font's colour codes: green, orange, red, grey for unknown
+	CString pingText(int ping)
+	{
+		int ms = ping * 33;
+		if (ms < 100) return CString("\x2%i", ms);
+		if (ms < 200) return CString("\x6%i", ms);
+		if (ms < 999) return CString("\x4%i", ms);
+		return CString("\x7???");
+	}
 }
 
-
+void renderStatsSlice(SliceKind kind, const UIColor & team, const char * text1, const char * c1, const char * c2, const char * c3,
+	const char * c4, const char * c5, const char * pingStr, int & vPos)
+{
+	float h = (kind == SLICE_HEADER) ? 22 : (kind == SLICE_SECTION) ? 30 : SB_ROW;
+	if (measuring)
+	{
+		vPos += (int)h + 2;
+		return;
+	}
+	float x = SB_X + SB_PAD, w = SB_W - 2 * SB_PAD, y = (float)vPos;
+#ifndef _DX_
+	switch (kind)
+	{
+	case SLICE_HEADER:
+		ui::bar(x, y + h, w, 1, ui::panelLine);
+		break;
+	case SLICE_SECTION:
+		ui::fillRect(x, y, w, h, ui::withAlpha(team, .20f), 4);
+		ui::fillRect(x, y, 4, h, team, 2);
+		break;
+	case SLICE_ROW:
+	case SLICE_MUTED:
+		ui::fillRect(x, y, w, h, ui::withAlpha(ui::field, .45f), 3);
+		break;
+	case SLICE_SELF:
+		ui::fillRect(x, y, w, h, ui::accentDim, 3);
+		ui::fillRect(x, y, 3, h, ui::accent, 1.5f);
+		break;
+	}
+	glEnable(GL_TEXTURE_2D);
+#endif
+	float size = (kind == SLICE_HEADER) ? 16 : (kind == SLICE_SECTION) ? 24 : SB_TEXT;
+	float ty = y + h / 2 - size / 2;   // the font's capitals sit in the middle of its cell
+	if (kind == SLICE_HEADER || kind == SLICE_MUTED) ui::setColor(ui::textMuted);
+	else ui::setColor(ui::text);
+	printLeftText(x + 14, ty, size, CString("%s", text1));
+	const char * cols[5] = {c1, c2, c3, c4, c5};
+	if (kind == SLICE_HEADER)
+	{
+		columns = 0;
+		while (columns < 5 && cols[columns][0]) columns++;
+	}
+	float right = x + w - 14;
+	// a team's band carries its score in the last column; with fewer columns than that (DM, TDM), it
+	// goes to the far right, where the band has no ping
+	if (kind == SLICE_SECTION && c5[0] && columns < 5 && !pingStr[0]) pingStr = c5;
+	printRightText(right, ty, size, CString("%s", pingStr));
+	for (int i = 0; i < columns; i++)
+		printRightText(right - (columns - i) * SB_COL, ty, size, CString("%s", cols[i]));
+	vPos += (int)h + 2;
+}
 
 void Game::renderBlueTeam(std::vector<Player*> & blueTeam, int & vPos)
 {
 	// Blue Team
-	renderStatsSlice(CVector4f(0, 0, 1, .75f), gameVar.lang_blueTeamC.s, "","","","",CString("%i", blueScore).s, CString(""/*%i", bluePing*33*/).s, vPos);
+	renderStatsSlice(SLICE_SECTION, teamBlue, gameVar.lang_blueTeamC.s, "","","","",CString("%i", blueScore).s, CString(""/*%i", bluePing*33*/).s, vPos);
 	for (int j=0;j<(int)blueTeam.size();++j)
 	{
 		CString showName = blueTeam[j]->name;
-		showName.insert("\x1", 0);
 		if (blueTeam[j]->status == PLAYER_STATUS_DEAD) showName.insert(CString("(%s) ", gameVar.lang_dead.s).s, 0);
+		showName.insert((char*)(blueTeam[j]->status == PLAYER_STATUS_DEAD ? "\x7" : "\x8"), 0);
 
-		CString pingStr;
-		if (blueTeam[j]->ping*33 < 100) /*"Good"*/
-			pingStr = CString("\x2") + blueTeam[j]->ping*33; 
-		else if (blueTeam[j]->ping*33 < 200) /*"Average"*/
-			pingStr = CString("\x9") + blueTeam[j]->ping*33; 
-		else if (blueTeam[j]->ping*33 < 999) /*"Bad"*/
-			pingStr = CString("\x4") + blueTeam[j]->ping*33;
-		else
-			pingStr = "\x5???";
+		CString pingStr = pingText(blueTeam[j]->ping);
 
-		renderStatsSlice(	CVector4f(0,0,0,.75f), showName.s,
+		renderStatsSlice(	(blueTeam[j] == thisPlayer ? SLICE_SELF : SLICE_ROW), ui::text, showName.s,
 							CString("%i",(int)blueTeam[j]->kills).s,
 							CString("%i",(int)blueTeam[j]->deaths).s,
 							CString("%.1f",blueTeam[j]->dmg).s,
@@ -121,24 +134,16 @@ void Game::renderBlueTeam(std::vector<Player*> & blueTeam, int & vPos)
 void Game::renderRedTeam(std::vector<Player*> & redTeam, int & vPos)
 {
 	// Red Team
-	renderStatsSlice(CVector4f(1, 0, 0, .75f), gameVar.lang_redTeamC.s,"","","","", CString("%i", redScore).s, CString(""/*%i", redPing*33*/).s, vPos);
+	renderStatsSlice(SLICE_SECTION, teamRed, gameVar.lang_redTeamC.s,"","","","", CString("%i", redScore).s, CString(""/*%i", redPing*33*/).s, vPos);
 	for (int j=0;j<(int)redTeam.size();++j)
 	{
 		CString showName = redTeam[j]->name;
-		showName.insert("\x4", 0);
 		if (redTeam[j]->status == PLAYER_STATUS_DEAD) showName.insert(CString("(%s) ", gameVar.lang_dead.s).s, 0);
+		showName.insert((char*)(redTeam[j]->status == PLAYER_STATUS_DEAD ? "\x7" : "\x8"), 0);
 
-		CString pingStr;
-		if (redTeam[j]->ping*33 < 100) /*"Good"*/
-			pingStr = CString("\x2") + redTeam[j]->ping*33; 
-		else if (redTeam[j]->ping*33 < 200) /*"Average"*/
-			pingStr = CString("\x9") + redTeam[j]->ping*33; 
-		else if (redTeam[j]->ping*33 < 999) /*"Bad"*/
-			pingStr = CString("\x4") + redTeam[j]->ping*33;
-		else
-			pingStr = "\x5???";
+		CString pingStr = pingText(redTeam[j]->ping);
 
-		renderStatsSlice(	CVector4f(0,0,0,.75f), showName.s,
+		renderStatsSlice(	(redTeam[j] == thisPlayer ? SLICE_SELF : SLICE_ROW), ui::text, showName.s,
 							CString("%i",(int)redTeam[j]->kills).s,
 							CString("%i",(int)redTeam[j]->deaths).s,
 							CString("%.1f",redTeam[j]->dmg).s,
@@ -152,23 +157,15 @@ void Game::renderRedTeam(std::vector<Player*> & redTeam, int & vPos)
 void Game::renderFFA(std::vector<Player*> & ffaTeam, int & vPos)
 {
 	// All Team
-	renderStatsSlice(CVector4f(1, 1, 1, .75f), CString(gameVar.lang_freeForAllC.s, redWin+blueWin).s,"","","","", CString(""/*%i", blueScore + redScore*/).s, CString("%i", ffaPing*33).s, vPos);
+	renderStatsSlice(SLICE_SECTION, teamNone, CString(gameVar.lang_freeForAllC.s, redWin+blueWin).s,"","","","", CString(""/*%i", blueScore + redScore*/).s, CString("%i", ffaPing*33).s, vPos);
 	for (int j=0;j<(int)ffaTeam.size();++j)
 	{
 		CString showName = ffaTeam[j]->name;
-		showName.insert("\x8", 0);
 		if (ffaTeam[j]->status == PLAYER_STATUS_DEAD) showName.insert((CString("(") + gameVar.lang_dead + ") ").s, 0);
-		CString pingStr;
-		if (ffaTeam[j]->ping*33 < 100) /*"Good"*/
-			pingStr = CString("\x2") + ffaTeam[j]->ping*33; 
-		else if (ffaTeam[j]->ping*33 < 200) /*"Average"*/
-			pingStr = CString("\x9") + ffaTeam[j]->ping*33; 
-		else if (ffaTeam[j]->ping*33 < 999) /*"Bad"*/
-			pingStr = CString("\x4") + ffaTeam[j]->ping*33;
-		else
-			pingStr = "\x5???";
+		showName.insert((char*)(ffaTeam[j]->status == PLAYER_STATUS_DEAD ? "\x7" : "\x8"), 0);
+		CString pingStr = pingText(ffaTeam[j]->ping);
 
-		renderStatsSlice(CVector4f(0,0,0,.75f), showName.s,CString("%i",(int)ffaTeam[j]->score).s, CString("%i", (int)ffaTeam[j]->deaths).s, CString("%.1f", ffaTeam[j]->dmg).s,"","", pingStr.s, vPos);
+		renderStatsSlice((ffaTeam[j] == thisPlayer ? SLICE_SELF : SLICE_ROW), ui::text, showName.s,CString("%i",(int)ffaTeam[j]->score).s, CString("%i", (int)ffaTeam[j]->deaths).s, CString("%.1f", ffaTeam[j]->dmg).s,"","", pingStr.s, vPos);
 
 
 	}
@@ -178,22 +175,14 @@ void Game::renderFFA(std::vector<Player*> & ffaTeam, int & vPos)
 void Game::renderSpectator(std::vector<Player*> & spectatorTeam, int & vPos)
 {
 	// Spectators
-	renderStatsSlice(CVector4f(.5f, .5f, .5f, .75f), gameVar.lang_spectatorC.s, "","","","","", CString(""/*%i", spectatorPing*33*/).s, vPos);
+	renderStatsSlice(SLICE_SECTION, ui::textMuted, gameVar.lang_spectatorC.s, "","","","","", CString(""/*%i", spectatorPing*33*/).s, vPos);
 	for (int j=0;j<(int)spectatorTeam.size();++j)
 	{
 		CString showName = spectatorTeam[j]->name;
-		showName.insert("\x8", 0);
-		CString pingStr;
-		if (spectatorTeam[j]->ping*33 < 100) /*"Good"*/
-			pingStr = CString("\x2") + spectatorTeam[j]->ping*33; 
-		else if (spectatorTeam[j]->ping*33 < 200) /*"Average"*/
-			pingStr = CString("\x9") + spectatorTeam[j]->ping*33; 
-		else if (spectatorTeam[j]->ping*33 < 999) /*"Bad"*/
-			pingStr = CString("\x4") + spectatorTeam[j]->ping*33;
-		else
-			pingStr = "\x5???";
+		showName.insert("\x7", 0);
+		CString pingStr = pingText(spectatorTeam[j]->ping);
 
-		renderStatsSlice(	CVector4f(0,0,0,.75f), showName.s,
+		renderStatsSlice(	SLICE_MUTED, ui::text, showName.s,
 							CString("%i",(int)spectatorTeam[j]->kills).s,
 							CString("%i",(int)spectatorTeam[j]->deaths).s,
 							CString("%.1f",spectatorTeam[j]->dmg).s,
@@ -215,27 +204,10 @@ void Game::renderStats()
 		glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glBegin(GL_QUADS);
-				glColor4f(0,0,0,1);
-				glVertex2f(0,0);
-				glColor4f(0,0,0,0);
-				glVertex2f(0,300);
-				glVertex2f(UI_W,300);
-				glColor4f(0,0,0,1);
-				glVertex2f(UI_W,0);
-			glEnd();
-			glBegin(GL_QUADS);
-				glColor4f(0,0,0,0);
-				glVertex2f(0,300);
-				glColor4f(0,0,0,1);
-				glVertex2f(0,600);
-				glVertex2f(UI_W,600);
-				glColor4f(0,0,0,0);
-				glVertex2f(UI_W,300);
-			glEnd();
+			// openbv: an even scrim (it was a black gradient from the top and bottom edges)
+			glDisable(GL_TEXTURE_2D);
+			ui::fillRect(0, 0, UI_W, UI_H, ui::withAlpha(ui::scrim, .55f), 0);
 			glEnable(GL_TEXTURE_2D);
-			// openbv: the table was laid out for 800 units: centred on the 16:9 screen
-			glTranslatef((float)(UI_W - 800) / 2, 0, 0);
 #endif
 
 			// On construit la blue team vector et la red team vector puis on tri
@@ -300,51 +272,65 @@ void Game::renderStats()
 
 			// Temporairement juste la liste des joueurs pas trié là pis toute
 			dkfBindFont(font);
-			int vPos = 50;
+			int vPos = 60, tableEnd = 60;
 
 			// Title [FIX]: Does not use language file
 
 
-			switch (gameType)
+			// openbv: twice: once to measure (the panel goes behind the table), once to draw
+			for (int pass = 0; pass < 2; ++pass)
 			{
-         case GAME_TYPE_SND:
-			case GAME_TYPE_DM:
-				renderStatsSlice(CVector4f(0, 0, 0, .75f), gameVar.lang_playerNameC.s, "Kills", "Death", "Damage", "", "", gameVar.lang_pingC.s, vPos);
-				vPos += 10;
-				renderFFA(ffaTeam, vPos);
-				renderSpectator(spectatorTeam, vPos);
-				break;
-			case GAME_TYPE_TDM:
-				renderStatsSlice(CVector4f(0, 0, 0, .75f), gameVar.lang_playerNameC.s, "Kills", "Death", "Damage", "","", gameVar.lang_pingC.s, vPos);
-				vPos += 10;
-				if (blueScore >= redScore) 
-				{
-					renderBlueTeam(blueTeam, vPos);
-					renderRedTeam(redTeam, vPos);
-				}
-				else
-				{
-					renderRedTeam(redTeam, vPos);
-					renderBlueTeam(blueTeam, vPos);
-				}
-				renderSpectator(spectatorTeam, vPos);
-				break;
-			case GAME_TYPE_CTF:			
-				renderStatsSlice(CVector4f(0, 0, 0, .75f), gameVar.lang_playerNameC.s, "Kills", "Death", "Damage", "Retrn", "Caps", gameVar.lang_pingC.s, vPos);
-				vPos += 10;
-				if (blueWin >= redWin) 
-				{
-					renderBlueTeam(blueTeam, vPos);
-					renderRedTeam(redTeam, vPos);
-				}
-				else
-				{
-					renderRedTeam(redTeam, vPos);
-					renderBlueTeam(blueTeam, vPos);
-				}
-				renderSpectator(spectatorTeam, vPos);
-				break;
+			measuring = (pass == 0);
+			vPos = 60;
+			if (pass == 1)
+			{
+				int top = 60 - (int)SB_PAD;
+				ui::rect(SB_X, (float)top, SB_W, (float)(tableEnd - top) + SB_PAD, ui::panel, ui::panelLine, 8);
 			}
+			switch (gameType)
+				{
+	         case GAME_TYPE_SND:
+				case GAME_TYPE_DM:
+					renderStatsSlice(SLICE_HEADER, ui::text, gameVar.lang_playerNameC.s, "Kills", "Death", "Damage", "", "", gameVar.lang_pingC.s, vPos);
+					vPos += 10;
+					renderFFA(ffaTeam, vPos);
+					renderSpectator(spectatorTeam, vPos);
+					break;
+				case GAME_TYPE_TDM:
+					renderStatsSlice(SLICE_HEADER, ui::text, gameVar.lang_playerNameC.s, "Kills", "Death", "Damage", "","", gameVar.lang_pingC.s, vPos);
+					vPos += 10;
+					if (blueScore >= redScore) 
+					{
+						renderBlueTeam(blueTeam, vPos);
+						renderRedTeam(redTeam, vPos);
+					}
+					else
+					{
+						renderRedTeam(redTeam, vPos);
+						renderBlueTeam(blueTeam, vPos);
+					}
+					renderSpectator(spectatorTeam, vPos);
+					break;
+				case GAME_TYPE_CTF:			
+					renderStatsSlice(SLICE_HEADER, ui::text, gameVar.lang_playerNameC.s, "Kills", "Death", "Damage", "Retrn", "Caps", gameVar.lang_pingC.s, vPos);
+					vPos += 10;
+					if (blueWin >= redWin) 
+					{
+						renderBlueTeam(blueTeam, vPos);
+						renderRedTeam(redTeam, vPos);
+					}
+					else
+					{
+						renderRedTeam(redTeam, vPos);
+						renderBlueTeam(blueTeam, vPos);
+					}
+					renderSpectator(spectatorTeam, vPos);
+					break;
+				}
+	
+			if (pass == 0) tableEnd = vPos;
+			}
+			measuring = false;
 
 			blueTeam.clear();
 			redTeam.clear();

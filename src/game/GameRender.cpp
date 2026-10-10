@@ -19,6 +19,7 @@
 #ifndef CONSOLE
 #include "Game.h"
 #include "ui.h"
+#include "UITheme.h"
 #include "Console.h"
 #include "Scene.h"
 
@@ -708,8 +709,15 @@ void Game::renderMiniMap()
 		glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT);
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glEnable(GL_TEXTURE_2D);
 			glDisable(GL_CULL_FACE);
+			// openbv: the minimap on a panel in the menus' style (UITheme.h)
+			{
+				float s = 128.0f / (float)max(map->size[0], map->size[1]);
+				float mw = map->size[0] * s, mh = map->size[1] * s;
+				glDisable(GL_TEXTURE_2D);
+				ui::rect(20 - 8, (float)res[1] - 20 - mh - 8, mw + 16, mh + 16, ui::panel, ui::panelLine, 8);
+			}
+			glEnable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D, map->texMap);
 			glPushMatrix();
 				float scalar = 128.0f / (float)max(map->size[0], map->size[1]);

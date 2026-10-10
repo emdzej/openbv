@@ -35,6 +35,95 @@
 //
 // Pour l'afficher
 //
+// openbv: the HUD in the menus' style (UITheme.h): small dark panels, the accent for progress, a health
+// bar that shifts from green to red. What it shows, where and when, is the original's.
+namespace
+{
+	const UIColor hudGreen  = {0.24f, 0.82f, 0.45f, 1};
+	const UIColor hudOrange = {1.00f, 0.66f, 0.18f, 1};
+	const UIColor hudRed    = {0.90f, 0.28f, 0.30f, 1};
+	const UIColor hudTrack  = {0.02f, 0.03f, 0.05f, 0.70f};
+	const UIColor teamBlue  = {0.24f, 0.48f, 1.00f, 1};
+	const UIColor teamRed   = {0.90f, 0.28f, 0.30f, 1};
+
+	UIColor healthColor(float life)
+	{
+		if (life > .6f) return hudGreen;
+		if (life > .3f) return ui::mix(hudOrange, hudGreen, (life - .3f) / .3f);
+		return ui::mix(hudRed, hudOrange, life / .3f);
+	}
+
+	// A panel behind a line of text centred on cx (y is the text's top, as printCenterText takes it).
+	void banner(float cx, float y, float size, const CString & text, const UIColor & tint, float alpha = 1)
+	{
+		float w = dkfGetStringWidth(size, textColorLess(text).s) + size * .9f;
+		float h = size * .62f;
+		float top = y + size / 2 - h / 2;
+		glDisable(GL_TEXTURE_2D);
+		ui::rect(cx - w / 2, top, w, h, ui::withAlpha(ui::panel, ui::panel.a * alpha), ui::withAlpha(ui::panelLine, ui::panelLine.a * alpha), h / 3);
+		if (tint.a > 0) ui::fillRect(cx - w / 2, top, w, h, ui::withAlpha(tint, .22f * alpha), h / 3);
+		glEnable(GL_TEXTURE_2D);
+		ui::setColor(ui::withAlpha(ui::text, alpha));
+		printCenterText(cx, y, size, text);
+	}
+
+	// The reload / grenade progress under the crosshair area: a thin accent bar in a small panel.
+	void progress(float alpha, float frac, bool showText)
+	{
+		if (frac < 0) frac = 0;
+		if (frac > 1) frac = 1;
+		float x = UI_CX - 110, y = 438, w = 220, h = 8;
+		glDisable(GL_TEXTURE_2D);
+		ui::rect(x - 8, y - 8, w + 16, h + 16, ui::panel, ui::panelLine, 8);
+		ui::fillRect(x, y, w, h, hudTrack, 4);
+		ui::fillRect(x, y, w * frac, h, ui::withAlpha(ui::accent, .55f + .45f * alpha), 4);
+		glEnable(GL_TEXTURE_2D);
+		if (showText)
+		{
+			ui::setColor(ui::text);
+			printCenterText(UI_CX, 400, 28, gameVar.lang_reloading);
+		}
+	}
+
+	// A secondary's count: its icon on a small tile, the number in the corner. pulse grows the icon as
+	// the original did while the throw recharges.
+	void itemTile(unsigned int tex, float cx, float cy, float pulse, int count)
+	{
+		const float t = 46;
+		glDisable(GL_TEXTURE_2D);
+		ui::rect(cx - t / 2, cy - t / 2, t, t, ui::panel, ui::panelLine, 7);
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, tex);
+		float r = 19 + pulse * 10;
+		glColor3f(1, 1, 1);
+		glBegin(GL_QUADS);
+			glTexCoord2f(0, 1); glVertex2f(cx - r, cy - r);
+			glTexCoord2f(0, 0); glVertex2f(cx - r, cy + r);
+			glTexCoord2f(1, 0); glVertex2f(cx + r, cy + r);
+			glTexCoord2f(1, 1); glVertex2f(cx + r, cy - r);
+		glEnd();
+		ui::setColor(ui::text);
+		printRightText(cx + t / 2 - 4, cy + t / 2 - 22, 26, CString("%i", count));
+	}
+
+	// A vertical gauge filling from the bottom: health, the chain gun's heat.
+	void gauge(float x, float y, float w, float h, float frac, const UIColor & fill, bool showFill)
+	{
+		if (frac < 0) frac = 0;
+		if (frac > 1) frac = 1;
+		glDisable(GL_TEXTURE_2D);
+		ui::rect(x - 5, y - 5, w + 10, h + 10, ui::panel, ui::panelLine, (w + 10) / 2);
+		ui::fillRect(x, y, w, h, hudTrack, w / 2);
+		if (showFill && frac > 0)
+		{
+			float fh = h * frac;
+			if (fh < w) fh = w;   // a full rounded end even when nearly empty
+			ui::fillRect(x, y + h - fh, w, fh, fill, w / 2);
+		}
+		glEnable(GL_TEXTURE_2D);
+	}
+}
+
 void Client::render(float & alphaScope)
 {
   int i;
@@ -139,259 +228,62 @@ void Client::render(float & alphaScope)
 					{
 						if (game->thisPlayer->weapon->currentFireDelay > 0 && game->thisPlayer->weapon->fireDelay >= 1.0f)
 						{
-							glDisable(GL_TEXTURE_2D);
-							glColor4f(1,1,1,.5f);
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100-5, 440-5);
-								glVertex2f(UI_CX-100-5, 454+5);
-								glVertex2f(UI_CX-100+200+10, 454+5);
-								glVertex2f(UI_CX-100+200+10, 440-5);
-							glEnd();
-							glColor4f(0,0,0,.5f);
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100-1, 440-1);
-								glVertex2f(UI_CX-100-1, 454+1);
-								glVertex2f(UI_CX-100+200+2, 454+1);
-								glVertex2f(UI_CX-100+200+2, 440-1);
-							glEnd();
-							glEnable(GL_TEXTURE_2D);
-							glColor4f(.5f,1,.5f,game->thisPlayer->weapon->currentFireDelay/game->thisPlayer->weapon->fireDelay*.75f+.25f);
-							if (blink < .25f) printCenterText(UI_CX, 400,32,gameVar.lang_reloading);
-							glDisable(GL_TEXTURE_2D);
-							// La progress bar
-							// La progress bar
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100, 440);
-								glVertex2f(UI_CX-100, 454);
-								glVertex2f(UI_CX-100+(1-game->thisPlayer->weapon->currentFireDelay/game->thisPlayer->weapon->fireDelay)*200, 454);
-								glVertex2f(UI_CX-100+(1-game->thisPlayer->weapon->currentFireDelay/game->thisPlayer->weapon->fireDelay)*200, 440);
-							glEnd();
+							// openbv: a themed bar (it was a framed green one)
+							progress(game->thisPlayer->weapon->currentFireDelay/game->thisPlayer->weapon->fireDelay, 1-game->thisPlayer->weapon->currentFireDelay/game->thisPlayer->weapon->fireDelay, blink < .25f);
 						}
 						else if (game->thisPlayer->grenadeDelay > 0)
 						{
-							glDisable(GL_TEXTURE_2D);
-							glColor4f(1,1,1,.5f);
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100-5, 440-5);
-								glVertex2f(UI_CX-100-5, 454+5);
-								glVertex2f(UI_CX-100+200+10, 454+5);
-								glVertex2f(UI_CX-100+200+10, 440-5);
-							glEnd();
-							glColor4f(0,0,0,.5f);
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100-1, 440-1);
-								glVertex2f(UI_CX-100-1, 454+1);
-								glVertex2f(UI_CX-100+200+2, 454+1);
-								glVertex2f(UI_CX-100+200+2, 440-1);
-							glEnd();
-							glEnable(GL_TEXTURE_2D);
-							glColor4f(.5f,1,.5f,game->thisPlayer->grenadeDelay/gameVar.weapons[WEAPON_GRENADE]->fireDelay*.75f+.25f);
-							if (blink < .25f) printCenterText(UI_CX, 400,32,gameVar.lang_reloading);
-							glDisable(GL_TEXTURE_2D);
-							// La progress bar
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100, 440);
-								glVertex2f(UI_CX-100, 454);
-								glVertex2f(UI_CX-100+(1-game->thisPlayer->grenadeDelay/gameVar.weapons[WEAPON_GRENADE]->fireDelay)*200, 454);
-								glVertex2f(UI_CX-100+(1-game->thisPlayer->grenadeDelay/gameVar.weapons[WEAPON_GRENADE]->fireDelay)*200, 440);
-							glEnd();
+							// openbv: a themed bar (it was a framed green one)
+							progress(game->thisPlayer->grenadeDelay/gameVar.weapons[WEAPON_GRENADE]->fireDelay, 1-game->thisPlayer->grenadeDelay/gameVar.weapons[WEAPON_GRENADE]->fireDelay, blink < .25f);
 						}
 						else if (game->thisPlayer->weapon->weaponID == WEAPON_SHOTGUN && game->thisPlayer->weapon->currentFireDelay > 0)
 						{
-							glDisable(GL_TEXTURE_2D);
-							glColor4f(1,1,1,.5f);
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100-5, 440-5);
-								glVertex2f(UI_CX-100-5, 454+5);
-								glVertex2f(UI_CX-100+200+10, 454+5);
-								glVertex2f(UI_CX-100+200+10, 440-5);
-							glEnd();
-							glColor4f(0,0,0,.5f);
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100-1, 440-1);
-								glVertex2f(UI_CX-100-1, 454+1);
-								glVertex2f(UI_CX-100+200+2, 454+1);
-								glVertex2f(UI_CX-100+200+2, 440-1);
-							glEnd();
-							glEnable(GL_TEXTURE_2D);
-							glColor4f(.5f,1,.5f,game->thisPlayer->weapon->currentFireDelay/game->thisPlayer->weapon->fireDelay*.75f+.25f);
-							if (blink < .25f) printCenterText(UI_CX, 400,32,gameVar.lang_reloading);
-							glDisable(GL_TEXTURE_2D);
-							// La progress bar
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100, 440);
-								glVertex2f(UI_CX-100, 454);
-								glVertex2f(UI_CX-100+(1-game->thisPlayer->weapon->currentFireDelay/3)*200, 454);
-								glVertex2f(UI_CX-100+(1-game->thisPlayer->weapon->currentFireDelay/3)*200, 440);
-							glEnd();
+							// openbv: a themed bar (it was a framed green one)
+							progress(game->thisPlayer->weapon->currentFireDelay/game->thisPlayer->weapon->fireDelay, 1-game->thisPlayer->weapon->currentFireDelay/3, blink < .25f);
 						}
 						else if (game->thisPlayer->meleeDelay > 0)
 						{
-							glDisable(GL_TEXTURE_2D);
-							glColor4f(1,1,1,.5f);
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100-5, 440-5);
-								glVertex2f(UI_CX-100-5, 454+5);
-								glVertex2f(UI_CX-100+200+10, 454+5);
-								glVertex2f(UI_CX-100+200+10, 440-5);
-							glEnd();
-							glColor4f(0,0,0,.5f);
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100-1, 440-1);
-								glVertex2f(UI_CX-100-1, 454+1);
-								glVertex2f(UI_CX-100+200+2, 454+1);
-								glVertex2f(UI_CX-100+200+2, 440-1);
-							glEnd();
-							glEnable(GL_TEXTURE_2D);
-							glColor4f(.5f,1,.5f,game->thisPlayer->meleeDelay/game->thisPlayer->meleeWeapon->fireDelay*.75f+.25f);
-							if (blink < .25f) printCenterText(UI_CX, 400,32,gameVar.lang_reloading);
-							glDisable(GL_TEXTURE_2D);
-							// La progress bar
-							glBegin(GL_QUADS);
-								glVertex2f(UI_CX-100, 440);
-								glVertex2f(UI_CX-100, 454);
-								glVertex2f(UI_CX-100+(1-game->thisPlayer->meleeDelay/game->thisPlayer->meleeWeapon->fireDelay)*200, 454);
-								glVertex2f(UI_CX-100+(1-game->thisPlayer->meleeDelay/game->thisPlayer->meleeWeapon->fireDelay)*200, 440);
-							glEnd();
+							// openbv: a themed bar (it was a framed green one)
+							progress(game->thisPlayer->meleeDelay/game->thisPlayer->meleeWeapon->fireDelay, 1-game->thisPlayer->meleeDelay/game->thisPlayer->meleeWeapon->fireDelay, blink < .25f);
 						}
 					}
 
 					glDisable(GL_TEXTURE_2D);
 
 					// On affiche sa vie à droite
-					glBegin(GL_QUADS);
-						glColor3f(1,1,1);
-						glVertex2f(UI_RX+760, 390);
-						glVertex2f(UI_RX+760, 589);
-						glVertex2f(UI_RX+789, 589);
-						glVertex2f(UI_RX+789, 390);
-						glColor3f(0,0,0);
-						glVertex2f(UI_RX+762, 392);
-						glVertex2f(UI_RX+762, 587);
-						glVertex2f(UI_RX+787, 587);
-						glVertex2f(UI_RX+787, 392);
-						// La couleur celon sa vie
-						if (game->thisPlayer->life > .25f || blink < .25f)
-						{
-							glColor3f(1-game->thisPlayer->life,game->thisPlayer->life,0);
-							glVertex2f(UI_RX+764, 585-game->thisPlayer->life*191);
-							glVertex2f(UI_RX+764, 585);
-							glVertex2f(UI_RX+785, 585);
-							glVertex2f(UI_RX+785, 585-game->thisPlayer->life*191);
-						}
-					glEnd();
+					// openbv: a slim rounded gauge, green to red with the health left, and the number above it;
+					// it still blinks below a quarter, as the original's bar did
+					gauge(UI_W - 30, 392, 14, 190, game->thisPlayer->life, healthColor(game->thisPlayer->life),
+						game->thisPlayer->life > .25f || blink < .25f);
+					ui::setColor(game->thisPlayer->life > .25f ? ui::text : hudRed);
+					printCenterText(UI_W - 23, 356, 24, CString("%i", (int)(game->thisPlayer->life * 100 + .5f)));
 
 					// Le heat du gun (ChainGun | FlameThrower)
-					if (game->thisPlayer->weapon)
+					// openbv: the chain gun's cooling as a second gauge, left of the health; blinking when overheated
+					if (game->thisPlayer->weapon && game->thisPlayer->weapon->weaponID == WEAPON_CHAIN_GUN)
 					{
-						if (game->thisPlayer->weapon->weaponID == WEAPON_CHAIN_GUN)
-						{
-							glBegin(GL_QUADS);
-								glColor4f(1,1,1, 1-game->thisPlayer->weapon->chainOverHeat*.5f);
-								glVertex2f(UI_RX+760, 390 - 200);
-								glVertex2f(UI_RX+760, 589 - 200);
-								glVertex2f(UI_RX+789, 589 - 200);
-								glVertex2f(UI_RX+789, 390 - 200);
-								glColor4f(0,0,0, 1-game->thisPlayer->weapon->chainOverHeat*.5f);
-								glVertex2f(UI_RX+762, 392 - 200);
-								glVertex2f(UI_RX+762, 587 - 200);
-								glVertex2f(UI_RX+787, 587 - 200);
-								glVertex2f(UI_RX+787, 392 - 200);
-								// La couleur celon sa vie
-								if ((game->thisPlayer->weapon->overHeated && blink < .25f) || !game->thisPlayer->weapon->overHeated)
-								{
-									glColor4f(1-game->thisPlayer->weapon->chainOverHeat,game->thisPlayer->weapon->chainOverHeat,game->thisPlayer->weapon->chainOverHeat, 1-game->thisPlayer->weapon->chainOverHeat*.5f);
-									glVertex2f(UI_RX+764, 585 - 200-game->thisPlayer->weapon->chainOverHeat*191);
-									glVertex2f(UI_RX+764, 585 - 200);
-									glVertex2f(UI_RX+785, 585 - 200);
-									glVertex2f(UI_RX+785, 585 - 200-game->thisPlayer->weapon->chainOverHeat*191);
-								}
-							glEnd();
-						}
+						float heat = game->thisPlayer->weapon->chainOverHeat;
+						gauge(UI_W - 58, 392, 10, 190, heat, ui::mix(hudRed, UIColor{.85f, .92f, 1, 1}, heat),
+							!game->thisPlayer->weapon->overHeated || blink < .25f);
 					}
 
 					// Le nb de grenade quil lui reste
 					if (game->thisPlayer->nbGrenadeLeft > 0)
 					{
-						glEnable(GL_TEXTURE_2D);
-						glBindTexture(GL_TEXTURE_2D, tex_grenadeLeft);
-						glPushMatrix();
-							glTranslatef(UI_RX+686+32, 526+32, 0);
-							if (game->thisPlayer->lastShootWasNade)
-							{
-								glScalef(32+game->thisPlayer->grenadeDelay*16,32+game->thisPlayer->grenadeDelay*16,0);
-							}
-							else
-							{
-								glScalef(32,32,0);
-							}
-							glBegin(GL_QUADS);
-								glColor3f(1,1,1);
-								glTexCoord2f(0,1);
-								glVertex2f(-1, -1);
-								glTexCoord2f(0,0);
-								glVertex2f(-1, 1);
-								glTexCoord2f(1,0);
-								glVertex2f(1, 1);
-								glTexCoord2f(1,1);
-								glVertex2f(1, -1);
-							glEnd();
-							glPopMatrix();
-						printCenterText(UI_RX+686+32, 526+32-16, 32, CString("%i", game->thisPlayer->nbGrenadeLeft));
+						itemTile(tex_grenadeLeft, UI_W - 82, 526 + 32, (game->thisPlayer->lastShootWasNade ? game->thisPlayer->grenadeDelay : 0), game->thisPlayer->nbGrenadeLeft);
 					}
 
 					// Le nb de molotov quil lui reste
 					if (game->thisPlayer->nbMolotovLeft > 0 && gameVar.sv_enableMolotov)
 					{
-						glEnable(GL_TEXTURE_2D);
-						glBindTexture(GL_TEXTURE_2D, tex_molotovLeft);
-						glPushMatrix();
-							glTranslatef(UI_RX+686+32, 474+32, 0);
-							if (!game->thisPlayer->lastShootWasNade)
-							{
-								glScalef(32+game->thisPlayer->grenadeDelay*16,32+game->thisPlayer->grenadeDelay*16,0);
-							}
-							else
-							{
-								glScalef(32,32,0);
-							}
-							glBegin(GL_QUADS);
-								glColor3f(1,1,1);
-								glTexCoord2f(0,1);
-								glVertex2f(-1, -1);
-								glTexCoord2f(0,0);
-								glVertex2f(-1, 1);
-								glTexCoord2f(1,0);
-								glVertex2f(1, 1);
-								glTexCoord2f(1,1);
-								glVertex2f(1, -1);
-							glEnd();
-							glPopMatrix();
-						printCenterText(UI_RX+686+32, 474+32-16, 32, CString("%i", game->thisPlayer->nbMolotovLeft));
+						itemTile(tex_molotovLeft, UI_W - 82, 474 + 32, (!game->thisPlayer->lastShootWasNade ? game->thisPlayer->grenadeDelay : 0), game->thisPlayer->nbMolotovLeft);
 					}
 
 					// Le nb de balle de shotgun quil lui reste
 					if ( (game->thisPlayer->weapon->weaponID == WEAPON_SHOTGUN) &&
 						(gameVar.sv_enableShotgunReload == true) )
 					{
-						glEnable(GL_TEXTURE_2D);
-						glBindTexture(GL_TEXTURE_2D, tex_shotgunLeft);
-						glPushMatrix();
-							glTranslatef(UI_RX+686+32, 422+32, 0);
-							glScalef(32+game->thisPlayer->weapon->currentFireDelay*16,32+game->thisPlayer->weapon->currentFireDelay*16,0);
-							glBegin(GL_QUADS);
-								glColor3f(1,1,1);
-								glTexCoord2f(0,1);
-								glVertex2f(-1, -1);
-								glTexCoord2f(0,0);
-								glVertex2f(-1, 1);
-								glTexCoord2f(1,0);
-								glVertex2f(1, 1);
-								glTexCoord2f(1,1);
-								glVertex2f(1, -1);
-							glEnd();
-							glPopMatrix();
-						printCenterText(UI_RX+686+32, 422+32-16, 32, CString("%i", 6 - game->thisPlayer->weapon->shotInc));
+						itemTile(tex_shotgunLeft, UI_W - 82, 422 + 32, game->thisPlayer->weapon->currentFireDelay, 6 - game->thisPlayer->weapon->shotInc);
 					}
 				}
 				else if ((
@@ -399,16 +291,15 @@ void Client::render(float & alphaScope)
 					game->thisPlayer->teamID == PLAYER_TEAM_RED) &&
 					game->thisPlayer->status == PLAYER_STATUS_DEAD  && !game->thisPlayer->spawnRequested)
 				{
-					glColor3f(1,1,1);
-					if (game->thisPlayer->timeToSpawn > 0) printCenterText(UI_CX, 200,64,CString(gameVar.lang_spawnIn.s, ((int)game->thisPlayer->timeToSpawn+1)/60, ((int)(game->thisPlayer->timeToSpawn+1)%60)));
-					else if (!gameVar.sv_forceRespawn) printCenterText(UI_CX, 200,64,CString("Press shoot key [%s] to respawn", keyManager.getKeyName(gameVar.k_shoot).s));
+					// openbv: on a banner, below the scoreboard the game shows while you are dead (it was at 200, under it)
+					if (game->thisPlayer->timeToSpawn > 0) banner(UI_CX, 470, 56, CString(gameVar.lang_spawnIn.s, ((int)game->thisPlayer->timeToSpawn+1)/60, ((int)(game->thisPlayer->timeToSpawn+1)%60)), UIColor{0,0,0,0});
+					else if (!gameVar.sv_forceRespawn) banner(UI_CX, 470, 44, CString("Press shoot key [%s] to respawn", keyManager.getKeyName(gameVar.k_shoot).s), ui::accent);
 				}
 
 				//--- Auto balance
 				if (gameVar.sv_autoBalance && autoBalanceTimer > 0 && blink < .25f)
 				{
-					glColor3f(1,1,1);
-					printCenterText(UI_CX, 0,64,CString("Autobalance in %i seconds", (int)autoBalanceTimer));
+					banner(UI_CX, 8, 40, CString("Autobalance in %i seconds", (int)autoBalanceTimer), ui::accent);
 				}
 
 				/*printCenterText(200,100,20,CString("Time played: %.2f", game->thisPlayer->timePlayedCurGame));
@@ -431,13 +322,8 @@ void Client::render(float & alphaScope)
 					float height = 40;
 					float scaledHeight = height / 1000.0f;
 					glDisable(GL_TEXTURE_2D);
-					glBegin(GL_QUADS);
-						glColor4f(0.7f, 0.7f, 0.7f, 0.4f);
-						glVertex2f(left, bottom-height);
-						glVertex2f(left, bottom);
-						glVertex2f(left+PING_LOG_SIZE, bottom);
-						glVertex2f(left+PING_LOG_SIZE, bottom-height);
-					glEnd();
+					// openbv: in a themed panel (it was a grey box)
+					ui::rect(left - 7, bottom - height - 6, PING_LOG_SIZE + 13, height + 12, ui::panel, ui::panelLine, 6);
 
 					glLineWidth(1.0f);
 					glBegin(GL_LINES);
@@ -491,83 +377,76 @@ void Client::render(float & alphaScope)
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 				// Afficher les win des team ou les score si en TDM ou CTF ou SND
-				glColor3f(1,1,1);
-				switch (game->gameType)
+				// openbv: the clock and the teams' scores in one panel, top left (the original printed
+				// them in large text straight over the map); the leading team first, as before
 				{
-				case GAME_TYPE_DM:
-					// Total Time left
-					printLeftText(5,5,64,CString("%01i:%02i", (int)((game->gameTimeLeft+1)/60), (int)(game->gameTimeLeft+1)%60));
-					break;
-				case GAME_TYPE_TDM:
-					// Total Time left
-					printLeftText(5,5,64,CString("%01i:%02i", (int)((game->gameTimeLeft+1)/60), (int)(game->gameTimeLeft+1)%60));
-					// Score left
-					if (game->blueScore >= game->redScore)
+					CString lines[3];
+					unsigned int icons[3] = {0, 0, 0};
+					int n = 0;
+					bool roundClock = false;
+					switch (game->gameType)
 					{
-						renderTexturedQuad(5,5+64,64,64,tex_blueFlag);
-						printLeftText(5+64+5,5+64,64,CString("%i/%i", game->blueScore, gameVar.sv_scoreLimit));
-						renderTexturedQuad(5,5+64+64,64,64,tex_redFlag);
-						printLeftText(5+64+5,5+64+64,64,CString("%i/%i", game->redScore, gameVar.sv_scoreLimit));
-					}
-					else
-					{
-						renderTexturedQuad(5,5+64,64,64,tex_redFlag);
-						printLeftText(5+64+5,5+64,64,CString("%i/%i", game->redScore, gameVar.sv_scoreLimit));
-						renderTexturedQuad(5,5+64+64,64,64,tex_blueFlag);
-						printLeftText(5+64+5,5+64+64,64,CString("%i/%i", game->blueScore, gameVar.sv_scoreLimit));
-					}
-					break;
-				case GAME_TYPE_CTF:
-					// Total Time left
-					printLeftText(5,5,64,CString("%01i:%02i", (int)((game->gameTimeLeft+1)/60), (int)(game->gameTimeLeft+1)%60));
-					// win left
-					if (game->blueWin >= game->redWin)
-					{
-						renderTexturedQuad(5,5+64,64,64,tex_blueFlag);
-						printLeftText(5+64+5,5+64,64,CString("%i/%i", game->blueWin, gameVar.sv_winLimit));
-						renderTexturedQuad(5,5+64+64,64,64,tex_redFlag);
-						printLeftText(5+64+5,5+64+64,64,CString("%i/%i", game->redWin, gameVar.sv_winLimit));
-					}
-					else
-					{
-						renderTexturedQuad(5,5+64,64,64,tex_redFlag);
-						printLeftText(5+64+5,5+64,64,CString("%i/%i", game->redWin, gameVar.sv_winLimit));
-						renderTexturedQuad(5,5+64+64,64,64,tex_blueFlag);
-						printLeftText(5+64+5,5+64+64,64,CString("%i/%i", game->blueWin, gameVar.sv_winLimit));
-					}
-					break;
-				case GAME_TYPE_SND:
-
+					case GAME_TYPE_DM:
+					case GAME_TYPE_TDM:
+					case GAME_TYPE_CTF:
+						lines[n++] = CString("%01i:%02i", (int)((game->gameTimeLeft+1)/60), (int)(game->gameTimeLeft+1)%60);
+						break;
+					case GAME_TYPE_SND:
 #ifdef _PRO_
-               printLeftText(5,5,64,CString("%01i:%02i", (int)((game->gameTimeLeft+1)/60), (int)(game->gameTimeLeft+1)%60));
-               printLeftText(5,5+64,64,CString("%01i:%02i", (int)((game->roundTimeLeft+1)/60), (int)(game->roundTimeLeft+1)%60));
-
+						lines[n++] = CString("%01i:%02i", (int)((game->gameTimeLeft+1)/60), (int)(game->gameTimeLeft+1)%60);
+						lines[n++] = CString("%01i:%02i", (int)((game->roundTimeLeft+1)/60), (int)(game->roundTimeLeft+1)%60);
+						roundClock = true;
 #else
-					// Round Time left
-					printLeftText(5,5,64,CString("%01i:%02i", (int)((game->roundTimeLeft+1)/60), (int)(game->roundTimeLeft+1)%60));
-					// win left
-
-					if (game->blueWin >= game->redWin)
-					{
-						renderTexturedQuad(5,5+64,64,64,tex_blueFlag);
-						printLeftText(5+64+5,5+64,64,CString("%i/%i", game->blueWin, gameVar.sv_winLimit));
-						renderTexturedQuad(5,5+64+64,64,64,tex_redFlag);
-						printLeftText(5+64+5,5+64+64,64,CString("%i/%i", game->redWin, gameVar.sv_winLimit));
-					}
-					else
-					{
-						renderTexturedQuad(5,5+64,64,64,tex_redFlag);
-						printLeftText(5+64+5,5+64,64,CString("%i/%i", game->redWin, gameVar.sv_winLimit));
-						renderTexturedQuad(5,5+64+64,64,64,tex_blueFlag);
-						printLeftText(5+64+5,5+64+64,64,CString("%i/%i", game->blueWin, gameVar.sv_winLimit));
-					}
-
-
+						lines[n++] = CString("%01i:%02i", (int)((game->roundTimeLeft+1)/60), (int)(game->roundTimeLeft+1)%60);
 #endif
-
-					break;
+						break;
+					}
+					int blue = 0, red = 0, limit = 0;
+					bool scores = false;
+					if (game->gameType == GAME_TYPE_TDM) { blue = game->blueScore; red = game->redScore; limit = gameVar.sv_scoreLimit; scores = true; }
+					if (game->gameType == GAME_TYPE_CTF) { blue = game->blueWin; red = game->redWin; limit = gameVar.sv_winLimit; scores = true; }
+#ifndef _PRO_
+					if (game->gameType == GAME_TYPE_SND) { blue = game->blueWin; red = game->redWin; limit = gameVar.sv_winLimit; scores = true; }
+#endif
+					if (scores)
+					{
+						bool blueFirst = blue >= red;
+						icons[n] = blueFirst ? tex_blueFlag : tex_redFlag;
+						lines[n++] = CString("%i/%i", blueFirst ? blue : red, limit);
+						icons[n] = blueFirst ? tex_redFlag : tex_blueFlag;
+						lines[n++] = CString("%i/%i", blueFirst ? red : blue, limit);
+					}
+					const float clockSize = 52, lineSize = 32, rowClock = 36, rowLine = 30, pad = 10;
+					float w = 0, h = pad * 2;
+					for (int k = 0; k < n; k++)
+					{
+						bool clock = k == 0 || (roundClock && k == 1);
+						float lw = dkfGetStringWidth(clock ? clockSize : lineSize, lines[k].s) + (icons[k] ? 34 : 0);
+						if (lw > w) w = lw;
+						h += clock ? rowClock : rowLine;
+					}
+					w += pad * 2 + 4;
+					glDisable(GL_TEXTURE_2D);
+					ui::rect(10, 10, w, h, ui::panel, ui::panelLine, 8);
+					glEnable(GL_TEXTURE_2D);
+					float y = 10 + pad;
+					for (int k = 0; k < n; k++)
+					{
+						bool clock = k == 0 || (roundClock && k == 1);
+						float row = clock ? rowClock : rowLine, size = clock ? clockSize : lineSize;
+						float x = 10 + pad + 2;
+						if (icons[k])
+						{
+							glColor3f(1, 1, 1);
+							renderTexturedQuad((int)x - 4, (int)(y + row / 2 - 16), 32, 32, icons[k]);
+							x += 34;
+						}
+						ui::setColor(k == 1 && roundClock ? ui::textMuted : ui::text);
+						printLeftText(x, y + row / 2 - size / 2, size, lines[k]);
+						y += row;
+					}
 				}
-         
+
 #ifdef _PRO_	      
 
             float textSize = (float)gameVar.r_chatTextSize;
@@ -670,7 +549,15 @@ void Client::render(float & alphaScope)
 
             if (gameVar.r_showEventText)
             {
-               printLeftText(xPos,(float)res[1] - (float)(eventMessages.size() - i - 1) * eventTextSize-20-eventTextSize, eventTextSize, eventMessages[i].message);
+               // openbv: on a soft dark backing, so it reads over bright maps
+               float ey = (float)res[1] - (float)(eventMessages.size() - i - 1) * eventTextSize-20-eventTextSize;
+               float fade = eventMessages[i].duration > 1 ? 1 : eventMessages[i].duration;
+               float ew = dkfGetStringWidth(eventTextSize, textColorLess(eventMessages[i].message).s);
+               glDisable(GL_TEXTURE_2D);
+               ui::fillRect(xPos - 6, ey + eventTextSize * .18f, ew + 12, eventTextSize * .64f, ui::withAlpha(ui::panel, .6f * fade), 4);
+               glEnable(GL_TEXTURE_2D);
+               glColor4f(1, 1, 1, fade);
+               printLeftText(xPos, ey, eventTextSize, eventMessages[i].message);
             }
 #else
             printLeftText(xPos,(float)res[1] - (float)(eventMessages.size() - i - 1) * 28-20-28, 28, eventMessages[i].message);
@@ -698,16 +585,16 @@ void Client::render(float & alphaScope)
 						{
 						case GAME_PLAYING: break;
 						case GAME_BLUE_WIN:
-							printCenterText(UI_CX+75, 5, 64, gameVar.lang_blueTeamWin);
+							banner(UI_CX, 8, 48, gameVar.lang_blueTeamWin, teamBlue);
 							break;
 						case GAME_RED_WIN:
-							printCenterText(UI_CX+75, 5, 64, gameVar.lang_redTeamWin);
+							banner(UI_CX, 8, 48, gameVar.lang_redTeamWin, teamRed);
 							break;
 						case GAME_DRAW:
-							printCenterText(UI_CX+75, 5, 64, gameVar.lang_roundDraw);
+							banner(UI_CX, 8, 48, gameVar.lang_roundDraw, UIColor{0,0,0,0});
 							break;
 						case GAME_MAP_CHANGE:
-							printCenterText(UI_CX+75, 5, 64, gameVar.lang_changingMap);
+							banner(UI_CX, 8, 48, gameVar.lang_changingMap, UIColor{0,0,0,0});
 							break;
 						}
 					glPopAttrib();
