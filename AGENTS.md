@@ -14,7 +14,7 @@ projects with the same conventions: `../openrf`, `../opengta`, `../openballance`
 exception, by the user's decision (2026-10-09): openbv is 16:9 throughout (`src/game/ui.h`: the UI canvas is
 1066x600 units, the render resolution follows the window, default 1920x1080), and the menus are redesigned
 (`src/game/UITheme.*`: flat panels, one accent colour, the Rubik font baked into the game's font format by
-`tools/fonts/`, built into the module by `src/port/embedded_assets.c`); the HUD follows the same style (UITheme.h; ClientRender.cpp, GameShowStats.cpp, the minimap in GameRender.cpp). The game code stays the original's; change
+`tools/fonts/`, built into the module by `src/port/embedded_assets.c`); the HUD stays the original's, drawn straight over the game, except the health gauge (ClientRender.cpp) and the scoreboard (GameShowStats.cpp), which follow the menus' style (the user's choice, 2026-10-10). The game code stays the original's; change
 it only where the platform forces it, and keep the change small, marked and explained. Reproduce the
 original's behaviour, quirks included. The reference is the Windows build of 2.11 (the source's `ProRelease`
 configuration: `_PRO_`, `_MD5CODESEG_`); where the source has Windows and Linux branches that differ, the

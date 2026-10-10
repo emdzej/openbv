@@ -12,10 +12,9 @@ openbv is early. The game runs and plays locally and online, on the openbv serve
   on CTF-Daivuk; the other game types and the map rotation not yet).
 - Playing on a hosted game: spawning, moving, weapons, projectiles, particles, the minimap, the
   console.
-- The HUD, redesigned like the menus: the clock and team scores in one panel, a slim health gauge with
-  the number (green to red), the chain gun's heat as a second gauge, the secondaries on small tiles,
-  themed reload bars, banners for respawning and round ends, a scoreboard with team bands, aligned
-  columns and the local player marked. It shows what the original showed.
+- The HUD: the original's, drawn straight over the game, except a slim health gauge with the number
+  (green to red) and a scoreboard like the menus, with team bands, aligned columns and the local
+  player marked. It shows what the original showed.
 - Sound: effects (2D and 3D) and music.
 - Keyboard and mouse as DirectInput read them; the first gamepad's sticks and triggers.
 - The browser: [/play/](/play/) runs the same module on WebGL 2, with the data from the site (cached
