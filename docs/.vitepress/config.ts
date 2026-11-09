@@ -30,6 +30,7 @@ export default defineConfig({
       { text: "Internals", link: "/internals/", activeMatch: "/internals/" },
       { text: "Status", link: "/status" },
       { text: "Download", link: "https://github.com/emdzej/openbv/releases" },
+      { text: "ENCORE", link: "https://encore.emdzej.pl" },
     ],
 
     sidebar: {
@@ -69,7 +70,7 @@ export default defineConfig({
 
     footer: {
       message:
-        "openbv is released under the GPL-3.0, like the Babo Violent 2 source it is built from (© 2012 bitHeads inc., released by Daivuk). The game's art and sound are RndLabs'. It runs on <a href=\"https://gasm.emdzej.pl\">gasm</a>. <a href=\"/credits\">Credits</a>",
+        "Part of <a href=\"https://encore.emdzej.pl\">ENCORE</a> — Engines of Nostalgia, Clean Open REimplementations. openbv is released under the GPL-3.0, like the Babo Violent 2 source it is built from (© 2012 bitHeads inc., released by Daivuk). The game's art and sound are RndLabs'. It runs on <a href=\"https://gasm.emdzej.pl\">gasm</a>. <a href=\"/credits\">Credits</a>",
     },
   },
 });
