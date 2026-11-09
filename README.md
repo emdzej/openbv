@@ -67,7 +67,9 @@ gasm-run build-gasm/openbv.wasm --asset-dir <the game's folder: bv2.db, main/>
 ```
 
 How it works inside — the window and loop, the OpenGL 1.x layer, the FMOD shim, the network over
-WebSockets — is on the [site](https://openbv.emdzej.pl).
+WebSockets — is on the [site](https://openbv.emdzej.pl). How the game itself was designed and how it works, from the
+frame loop to the netcode and the rules, is in [How Babo Violent 2 works](https://openbv.emdzej.pl/guide/theory)
+([`docs/guide/theory.md`](docs/guide/theory.md)).
 
 ## Licence
 

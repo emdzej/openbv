@@ -43,6 +43,7 @@ export default defineConfig({
             { text: "Hosting a game", link: "/guide/hosting" },
             { text: "Running a server", link: "/guide/server" },
             { text: "Building from source", link: "/guide/build" },
+            { text: "How the game works", link: "/guide/theory" },
           ],
         },
       ],

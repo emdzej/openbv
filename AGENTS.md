@@ -59,6 +59,10 @@ pings in the Game Browser (no UDP), the rest of Prozac 2.1.3's changes.
 4. **Determinism.** The same input gives the same frames and sound on every runner. Native gasm-run and the
    Node runner must print the same hash line.
 5. Cite the original when replacing it (file and function), write in your own words.
+6. **Explain the game, not only port it.** Keep the design notes (`design/server.md`, `docs/internals/`)
+   accurate as each subsystem changes, and keep `docs/guide/theory.md`, the theory of operation, up to date:
+   how the game was designed and how it works, in prose, for someone who wants to build such a game. No game
+   data in it, no long code excerpts; link to the notes for detail, and say where something isn't understood.
 
 ## Build and run
 
@@ -94,7 +98,8 @@ storage (keys: `/` as `--`, lower case) and shadow the assets.
 
 ## Docs site
 
-VitePress in `docs/`, published to openbv.emdzej.pl by `.github/workflows/pages.yml`. No emojis. The
+VitePress in `docs/`, published to openbv.emdzej.pl by `.github/workflows/pages.yml`. `docs/guide/theory.md` is the
+theory of operation (hard rule 6). No emojis. The
 "Built for gasm" badge is gasm's official one, hotlinked (don't recolor, stretch or crop). Don't overstate
 the state. The home background is a gasm guest (`tools/site-bg/`), drawn procedurally: no game assets on the
 site except screenshots of the port.
